@@ -104,6 +104,18 @@ public sealed class CarrierContractTests
     }
 
     [Fact]
+    public void Dropp_ReadsFulfillmentModeFromAccountConfiguration()
+    {
+        var automaticCarrier = BuildDroppCarrier(
+            new StatusHandler(HttpStatusCode.OK),
+            "Automatic");
+        var manualCarrier = BuildDroppCarrier(new StatusHandler(HttpStatusCode.OK));
+
+        Assert.Equal(ShippingFulfillmentMode.Automatic, automaticCarrier.GetFulfillmentMode("main"));
+        Assert.Equal(ShippingFulfillmentMode.Manual, manualCarrier.GetFulfillmentMode("main"));
+    }
+
+    [Fact]
     public async Task IcelandicPost_MapsAvailableServices()
     {
         var handler = new RecordingHandler("""
@@ -136,16 +148,24 @@ public sealed class CarrierContractTests
     private static IConfiguration BuildConfiguration(Dictionary<string, string?> values) =>
         new ConfigurationBuilder().AddInMemoryCollection(values).Build();
 
-    private static IShippingFulfillmentCarrier BuildDroppCarrier(HttpMessageHandler handler)
+    private static IShippingFulfillmentCarrier BuildDroppCarrier(
+        HttpMessageHandler handler,
+        string? fulfillmentMode = null)
     {
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddDroppShipping(BuildConfiguration(new Dictionary<string, string?>
+        var configuration = new Dictionary<string, string?>
         {
             ["Ekom:Shipping:Dropp:Accounts:main:ApiUrl"] = "https://dropp.test/api/",
             ["Ekom:Shipping:Dropp:Accounts:main:ApiKey"] = "secret",
             ["Ekom:Shipping:Dropp:Accounts:main:StoreId"] = "store",
-        }));
+        };
+        if (fulfillmentMode is not null)
+        {
+            configuration["Ekom:Shipping:Dropp:Accounts:main:FulfillmentMode"] = fulfillmentMode;
+        }
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDroppShipping(BuildConfiguration(configuration));
         services.AddSingleton<IHttpClientFactory>(new TestHttpClientFactory(handler));
         return services.BuildServiceProvider()
             .GetRequiredService<IShippingFulfillmentCarrierRegistry>()

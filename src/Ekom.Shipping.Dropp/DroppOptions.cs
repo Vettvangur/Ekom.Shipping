@@ -10,6 +10,8 @@ public sealed class DroppOptions
 
 public sealed class DroppAccountOptions
 {
+    public ShippingFulfillmentMode FulfillmentMode { get; init; } = ShippingFulfillmentMode.Manual;
+
     public string ApiUrl { get; init; } = string.Empty;
 
     public string ApiKey { get; init; } = string.Empty;

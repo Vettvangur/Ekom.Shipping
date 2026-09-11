@@ -39,7 +39,18 @@ internal sealed class ShippingFulfillmentService : IShippingFulfillmentService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(order);
-        if (!IsAutomatic(order))
+        var configuration = EkomShippingMethodConfiguration.FromProperties(
+            order.ShippingProvider.Key,
+            order.ShippingProvider.Properties);
+        if (configuration is null)
+        {
+            return null;
+        }
+
+        var carrier = _carriers.Carriers.FirstOrDefault(candidate =>
+            string.Equals(candidate.Alias, configuration.CarrierAlias, StringComparison.OrdinalIgnoreCase));
+        if (carrier is null ||
+            carrier.GetFulfillmentMode(configuration.AccountReference) != ShippingFulfillmentMode.Automatic)
         {
             return null;
         }
@@ -482,11 +493,6 @@ internal sealed class ShippingFulfillmentService : IShippingFulfillmentService
             order.CreateDate.ToUniversalTime(),
             updatedUtc == default ? order.UpdateDate.ToUniversalTime() : updatedUtc.ToUniversalTime());
     }
-
-    private static bool IsAutomatic(IOrderInfo order) =>
-        order.ShippingProvider.Properties.TryGetValue(EkomShippingPropertyAliases.FulfillmentMode, out var mode) &&
-        (string.Equals(mode, "automatic", StringComparison.OrdinalIgnoreCase) ||
-         string.Equals(mode, bool.TrueString, StringComparison.OrdinalIgnoreCase));
 
     private static void SetOrRemove(Dictionary<string, string> data, string key, string? value)
     {

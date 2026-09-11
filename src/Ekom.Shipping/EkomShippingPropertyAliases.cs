@@ -5,7 +5,6 @@ public static class EkomShippingPropertyAliases
     public const string CarrierAlias = "shippingCarrierAlias";
     public const string AccountReference = "shippingCarrierAccount";
     public const string ServiceId = "shippingCarrierService";
-    public const string FulfillmentMode = "shippingFulfillmentMode";
 
     public const string CustomCarrierAlias = "customshippingCarrierAlias";
     public const string CustomAccountReference = "customshippingAccountReference";

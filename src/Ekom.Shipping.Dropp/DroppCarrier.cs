@@ -36,6 +36,9 @@ internal sealed class DroppCarrier : IDroppShippingService
         ShippingCarrierCapabilities.Labels |
         ShippingCarrierCapabilities.Tracking;
 
+    public ShippingFulfillmentMode GetFulfillmentMode(string accountReference) =>
+        GetAccount(accountReference).FulfillmentMode;
+
     public Task<IReadOnlyList<ShippingService>> GetServicesAsync(
         string accountReference,
         ShippingLookupRequest request,

@@ -6,6 +6,8 @@ public interface IShippingFulfillmentCarrier
 
     ShippingCarrierCapabilities Capabilities { get; }
 
+    ShippingFulfillmentMode GetFulfillmentMode(string accountReference);
+
     Task<string?> ReserveBookingReferenceAsync(
         string accountReference,
         CancellationToken cancellationToken = default);

@@ -29,7 +29,8 @@ store only a provider alias, account reference, and service ID.
           "dropp-main": {
             "ApiUrl": "https://api.example/",
             "ApiKey": "use-a-secret-provider",
-            "StoreId": "store-id"
+            "StoreId": "store-id",
+            "FulfillmentMode": "Automatic"
           }
         }
       },
@@ -64,14 +65,14 @@ manage their values in the Umbraco backoffice:
 | `shippingCarrierAlias` | Registered carrier | `dropp` |
 | `shippingCarrierAccount` | Account configuration reference | `dropp-main` |
 | `shippingCarrierService` | Carrier service | `pickup` |
-| `shippingFulfillmentMode` | Booking mode | `automatic` or `manual` |
 
 Legacy shipping providers with all three properties empty continue to work as
 normal Ekom shipping providers. Partially configured providers fail validation.
 
-When `shippingFulfillmentMode` is `automatic`, the Umbraco adapter creates the
-shipment from `CheckoutEvents.CompleteCheckoutAsync`. It does not depend on the
-order becoming `ReadyForDispatch`, so offline-payment and customized order
+When an account's `FulfillmentMode` is `Automatic`, the Umbraco adapter creates
+the shipment from `CheckoutEvents.CompleteCheckoutAsync`. Accounts default to
+`Manual` when the setting is omitted. Automatic fulfillment does not depend on
+the order becoming `ReadyForDispatch`, so offline-payment and customized order
 status flows are supported. Carrier failures are logged and saved on the order;
 they do not fail checkout completion.
 
