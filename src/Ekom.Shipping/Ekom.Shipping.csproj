@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <PackageId>Ekom.Shipping</PackageId>
+    <Description>Checkout integration between Ekom and shipping carrier packages.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="../Ekom.Shipping.Core/Ekom.Shipping.Core.csproj" />
+    <PackageReference Include="Ekom.Core" Version="0.2.273" />
+  </ItemGroup>
+</Project>

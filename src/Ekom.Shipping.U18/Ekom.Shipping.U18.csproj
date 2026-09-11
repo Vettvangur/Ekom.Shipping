@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <PackageId>Ekom.Shipping.U18</PackageId>
+    <Description>Ekom Shipping integration for Umbraco 18.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Ekom.Shipping/Ekom.Shipping.csproj" />
+    <PackageReference Include="Ekom.U18" Version="0.2.273" />
+    <PackageReference Include="Umbraco.Cms.Core" Version="18.1.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../Ekom.Shipping.Umbraco.Shared/EkomShippingComposer.cs" Link="EkomShippingComposer.cs" />
+  </ItemGroup>
+</Project>
