@@ -1,15 +1,15 @@
 # Ekom.Shipping
 
-Reusable checkout shipping providers for Ekom. The first release focuses on
-service and pickup-location lookup, server-side selection validation, and a
-consistent Ekom order-data format. It does not create carrier shipments or
-labels.
+Reusable checkout and fulfillment providers for Ekom. Checkout selection,
+automatic carrier booking, manual booking, and label printing use the same
+provider services. Shipment state is stored on the order's shipping-provider
+`CustomData`; the package creates no shipping table.
 
 ## Packages
 
 - `Ekom.Shipping.Core` — provider-neutral contracts and validation.
 - `Ekom.Shipping` — Ekom shipping-method and order-data integration.
-- `Ekom.Shipping.Dropp` — Dropp pickup locations.
+- `Ekom.Shipping.Dropp` — Dropp locations, booking, labels, and tracking.
 - `Ekom.Shipping.IcelandicPost` — Íslandspóstur services and postboxes.
 - `Ekom.Shipping.U10` — Umbraco 13 integration.
 - `Ekom.Shipping.U17` — Umbraco 17 integration.
@@ -29,7 +29,8 @@ store only a provider alias, account reference, and service ID.
           "dropp-main": {
             "ApiUrl": "https://api.example/",
             "ApiKey": "use-a-secret-provider",
-            "StoreId": "store-id"
+            "StoreId": "store-id",
+            "FulfillmentMode": "Automatic"
           }
         }
       },
@@ -68,7 +69,14 @@ manage their values in the Umbraco backoffice:
 Legacy shipping providers with all three properties empty continue to work as
 normal Ekom shipping providers. Partially configured providers fail validation.
 
-The Umbraco packages currently register the shared Ekom checkout services. An
+When an account's `FulfillmentMode` is `Automatic`, the Umbraco adapter creates
+the shipment from `CheckoutEvents.CompleteCheckoutAsync`. Accounts default to
+`Manual` when the setting is omitted. Automatic fulfillment does not depend on
+the order becoming `ReadyForDispatch`, so offline-payment and customized order
+status flows are supported. Carrier failures are logged and saved on the order;
+they do not fail checkout completion.
+
+The Umbraco packages register the shared checkout and fulfillment services. An
 automatic document-type migration and a provider-aware backoffice selector are
 planned before the first stable release.
 
@@ -83,3 +91,55 @@ with the order come from the carrier rather than the browser.
 
 Sites remain responsible for checkout HTML, maps, CSP rules, antiforgery, and
 cart ownership checks.
+
+## Fulfillment
+
+`IShippingFulfillmentService` is the recommended Ekom-level API:
+
+```csharp
+await fulfillment.CreateAsync(orderId, cancellationToken);
+await fulfillment.RetryAsync(orderId, cancellationToken);
+var label = await fulfillment.GetLabelAsync(orderId, cancellationToken);
+```
+
+`CreateAsync` works regardless of the configured automatic/manual mode.
+Automatic checkout processing calls the same implementation. Sites can add
+`IShippingAutomationRule` implementations to veto automatic creation, and can
+replace `IShippingOrderMapper` when their order-to-carrier mapping differs.
+
+For provider-specific manual usage, inject `IDroppShippingService`. It exposes
+location lookup, barcode reservation, booking, PDF labels, and tracking without
+requiring the Ekom fulfillment orchestration service.
+
+The Ekom order manager receives context-sensitive actions automatically:
+
+- **Create shipment** when no shipment exists.
+- **Retry shipment** after a definite failure.
+- **Print shipping label** after successful creation.
+- A disabled warning when the outcome is unknown.
+
+Printing never creates a shipment implicitly.
+
+### Order custom data
+
+The orchestration service stores these values under `ShippingProvider.CustomData`:
+
+- `customshippingShipmentState`
+- `customshippingShipmentAttempts`
+- `customshippingShipmentReference`
+- `customshippingShipmentId`
+- `customshippingTrackingNumber`
+- `customshippingShipmentLastError`
+- `customshippingShipmentUpdatedUtc`
+- `customshippingCarrierAlias`
+- `customshippingAccountReference`
+- `customshippingServiceId`
+
+Existing Dropp values (`customshippingDroppBarcode` and
+`customshippingDroppOrderId`) are recognized for label compatibility.
+
+State is written before carrier submission. A connection failure after
+submission becomes `OutcomeUnknown` and is not blindly retried, because Dropp's
+idempotency behavior has not been confirmed. Per-order semaphores prevent
+duplicate submissions within one application process. Multi-node sites should
+add a distributed order lock before enabling automatic creation.

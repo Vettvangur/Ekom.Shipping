@@ -41,3 +41,11 @@ public sealed class InvalidShippingSelectionException : ShippingException
     {
     }
 }
+
+public sealed class ShipmentOutcomeUnknownException : ShippingException
+{
+    public ShipmentOutcomeUnknownException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+    }
+}

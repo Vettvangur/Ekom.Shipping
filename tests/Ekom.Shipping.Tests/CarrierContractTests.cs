@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Ekom.Shipping.Dropp;
 using Ekom.Shipping.IcelandicPost;
 using Microsoft.Extensions.Configuration;
@@ -9,6 +10,48 @@ namespace Ekom.Shipping.Tests;
 
 public sealed class CarrierContractTests
 {
+    [Fact]
+    public async Task Dropp_BooksHomeDeliveryWithReservedBarcode()
+    {
+        var orderId = Guid.NewGuid();
+        var handler = new SequenceHandler(
+            """{"barcode":"BAR123"}""",
+            $$"""{"id":"{{orderId}}"}""");
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDroppShipping(BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["Ekom:Shipping:Dropp:Accounts:main:ApiUrl"] = "https://dropp.test/api/",
+            ["Ekom:Shipping:Dropp:Accounts:main:ApiKey"] = "secret",
+            ["Ekom:Shipping:Dropp:Accounts:main:StoreId"] = "store",
+        }));
+        services.AddSingleton<IHttpClientFactory>(new TestHttpClientFactory(handler));
+        await using var provider = services.BuildServiceProvider();
+        var carrier = provider.GetRequiredService<IShippingFulfillmentCarrierRegistry>()
+            .GetRequired(DroppShippingDefaults.CarrierAlias);
+
+        var barcode = await carrier.ReserveBookingReferenceAsync("main");
+        var result = await carrier.CreateShipmentAsync(
+            "main",
+            new ShipmentBookingRequest(
+                "ORDER-1",
+                DroppShippingDefaults.HomeDeliveryServiceId,
+                new ShipmentRecipient("Customer", "customer@example.test", "5551234", "Street 1", "101", "Reykjavík", "IS"),
+                [new ShipmentItem("SKU1", "Product", 2)],
+                1200m,
+                "ISK",
+                BookingReference: barcode));
+
+        Assert.Equal(orderId.ToString(), result.ShipmentId);
+        Assert.Equal("BAR123", result.BookingReference);
+        Assert.Equal("https://dropp.test/api/orders/barcode/", handler.Requests[0].Uri.AbsoluteUri);
+        Assert.Equal(HttpMethod.Post, handler.Requests[1].Method);
+        using var document = JsonDocument.Parse(handler.Requests[1].Content!);
+        Assert.Equal("BAR123", document.RootElement.GetProperty("barcode").GetString());
+        Assert.Equal(2, document.RootElement.GetProperty("products")[0].GetProperty("quantity").GetInt32());
+        Assert.False(document.RootElement.TryGetProperty("id", out _));
+    }
+
     [Fact]
     public async Task Dropp_MapsLocationsAndSendsConfiguredAuthentication()
     {
@@ -38,6 +81,38 @@ public sealed class CarrierContractTests
         Assert.Equal("https://dropp.test/api/dropp/locations?store=store%20id", handler.RequestUri?.AbsoluteUri);
         Assert.Equal("Basic", handler.AuthorizationScheme);
         Assert.Equal("secret", handler.AuthorizationParameter);
+    }
+
+    [Fact]
+    public async Task Dropp_TreatsServerErrorAfterSubmissionAsOutcomeUnknown()
+    {
+        var carrier = BuildDroppCarrier(new StatusHandler(HttpStatusCode.ServiceUnavailable));
+
+        await Assert.ThrowsAsync<ShipmentOutcomeUnknownException>(() => carrier.CreateShipmentAsync(
+            "main",
+            BuildDroppBookingRequest()));
+    }
+
+    [Fact]
+    public async Task Dropp_TreatsValidationErrorAsDefiniteFailure()
+    {
+        var carrier = BuildDroppCarrier(new StatusHandler(HttpStatusCode.BadRequest));
+
+        await Assert.ThrowsAsync<ShippingProviderException>(() => carrier.CreateShipmentAsync(
+            "main",
+            BuildDroppBookingRequest()));
+    }
+
+    [Fact]
+    public void Dropp_ReadsFulfillmentModeFromAccountConfiguration()
+    {
+        var automaticCarrier = BuildDroppCarrier(
+            new StatusHandler(HttpStatusCode.OK),
+            "Automatic");
+        var manualCarrier = BuildDroppCarrier(new StatusHandler(HttpStatusCode.OK));
+
+        Assert.Equal(ShippingFulfillmentMode.Automatic, automaticCarrier.GetFulfillmentMode("main"));
+        Assert.Equal(ShippingFulfillmentMode.Manual, manualCarrier.GetFulfillmentMode("main"));
     }
 
     [Fact]
@@ -72,6 +147,39 @@ public sealed class CarrierContractTests
 
     private static IConfiguration BuildConfiguration(Dictionary<string, string?> values) =>
         new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+
+    private static IShippingFulfillmentCarrier BuildDroppCarrier(
+        HttpMessageHandler handler,
+        string? fulfillmentMode = null)
+    {
+        var configuration = new Dictionary<string, string?>
+        {
+            ["Ekom:Shipping:Dropp:Accounts:main:ApiUrl"] = "https://dropp.test/api/",
+            ["Ekom:Shipping:Dropp:Accounts:main:ApiKey"] = "secret",
+            ["Ekom:Shipping:Dropp:Accounts:main:StoreId"] = "store",
+        };
+        if (fulfillmentMode is not null)
+        {
+            configuration["Ekom:Shipping:Dropp:Accounts:main:FulfillmentMode"] = fulfillmentMode;
+        }
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDroppShipping(BuildConfiguration(configuration));
+        services.AddSingleton<IHttpClientFactory>(new TestHttpClientFactory(handler));
+        return services.BuildServiceProvider()
+            .GetRequiredService<IShippingFulfillmentCarrierRegistry>()
+            .GetRequired(DroppShippingDefaults.CarrierAlias);
+    }
+
+    private static ShipmentBookingRequest BuildDroppBookingRequest() => new(
+        "ORDER-1",
+        DroppShippingDefaults.HomeDeliveryServiceId,
+        new ShipmentRecipient("Customer", "customer@example.test", "5551234", "Street 1", "101", "Reykjavík", "IS"),
+        [new ShipmentItem("SKU1", "Product", 1)],
+        1200m,
+        "ISK",
+        BookingReference: "BAR123");
 
     private sealed class TestHttpClientFactory : IHttpClientFactory
     {
@@ -116,4 +224,40 @@ public sealed class CarrierContractTests
             });
         }
     }
+
+    private sealed class SequenceHandler : HttpMessageHandler
+    {
+        private readonly Queue<string> _responses;
+
+        public SequenceHandler(params string[] responses)
+        {
+            _responses = new Queue<string>(responses);
+        }
+
+        public List<RecordedRequest> Requests { get; } = [];
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            var content = request.Content is null
+                ? null
+                : await request.Content.ReadAsStringAsync(cancellationToken);
+            Requests.Add(new RecordedRequest(request.Method, request.RequestUri!, content));
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(_responses.Dequeue(), Encoding.UTF8, "application/json"),
+            };
+        }
+    }
+
+    private sealed class StatusHandler(HttpStatusCode statusCode) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(statusCode));
+    }
+
+    private sealed record RecordedRequest(HttpMethod Method, Uri Uri, string? Content);
 }

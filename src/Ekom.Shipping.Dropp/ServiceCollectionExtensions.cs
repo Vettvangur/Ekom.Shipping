@@ -24,7 +24,10 @@ public static class ServiceCollectionExtensions
             .Bind(configuration.GetSection(DroppOptions.SectionName))
             .Validate(HasValidAccounts, "Every Dropp account requires HTTPS, credentials, and a positive cache duration.")
             .ValidateOnStart();
-        services.AddSingleton<IShippingCarrier, DroppCarrier>();
+        services.AddSingleton<DroppCarrier>();
+        services.AddSingleton<IDroppShippingService>(provider => provider.GetRequiredService<DroppCarrier>());
+        services.AddSingleton<IShippingCarrier>(provider => provider.GetRequiredService<DroppCarrier>());
+        services.AddSingleton<IShippingFulfillmentCarrier>(provider => provider.GetRequiredService<DroppCarrier>());
         return services;
     }
 

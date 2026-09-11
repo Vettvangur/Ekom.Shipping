@@ -11,5 +11,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../Ekom.Shipping.Umbraco.Shared/EkomShippingComposer.cs" Link="EkomShippingComposer.cs" />
+    <Compile Include="../Ekom.Shipping.Umbraco.Shared/EkomShippingEvents.cs" Link="EkomShippingEvents.cs" />
   </ItemGroup>
 </Project>
