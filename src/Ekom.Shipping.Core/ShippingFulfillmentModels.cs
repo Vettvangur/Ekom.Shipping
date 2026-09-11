@@ -33,3 +33,9 @@ public sealed record ShippingLabel(
     string FileName);
 
 public sealed record ShippingTrackingResult(string Content, string ContentType = "application/json");
+
+public sealed record ShippingShipmentDocument(
+    byte[] Content,
+    string ContentType,
+    string FileName,
+    string? Status = null);

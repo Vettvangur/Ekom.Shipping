@@ -8,4 +8,7 @@ public enum ShippingFulfillmentState
     Created,
     Failed,
     OutcomeUnknown,
+    Deleting,
+    Deleted,
+    DeleteOutcomeUnknown,
 }

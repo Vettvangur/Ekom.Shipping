@@ -6,6 +6,10 @@
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <ProjectReference Include="../Ekom.Shipping.Core/Ekom.Shipping.Core.csproj" />
+    <ProjectReference Include="../../Ekom.Shipping.Core/Ekom.Shipping.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="$(MSBuildThisFileDirectory)../../../README.md" />
+    <None Update="README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 </Project>

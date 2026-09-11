@@ -9,8 +9,8 @@ provider services. Shipment state is stored on the order's shipping-provider
 
 - `Ekom.Shipping.Core` — provider-neutral contracts and validation.
 - `Ekom.Shipping` — Ekom shipping-method and order-data integration.
-- `Ekom.Shipping.Dropp` — Dropp locations, booking, labels, and tracking.
-- `Ekom.Shipping.IcelandicPost` — Íslandspóstur services and postboxes.
+- [`Ekom.Shipping.Dropp`](src/Providers/Ekom.Shipping.Dropp/README.md) — Dropp locations, booking, order management, labels, returns, extra packages, and tracking.
+- [`Ekom.Shipping.IcelandicPost`](src/Providers/Ekom.Shipping.IcelandicPost/README.md) — Íslandspóstur services and postboxes.
 - `Ekom.Shipping.U10` — Umbraco 13 integration.
 - `Ekom.Shipping.U17` — Umbraco 17 integration.
 - `Ekom.Shipping.U18` — Umbraco 18 integration.
@@ -116,9 +116,14 @@ The Ekom order manager receives context-sensitive actions automatically:
 - **Create shipment** when no shipment exists.
 - **Retry shipment** after a definite failure.
 - **Print shipping label** after successful creation.
+- **View shipment JSON** to fetch current carrier details.
+- **Delete shipment** when the carrier supports deletion and the shipment has not progressed too far.
 - A disabled warning when the outcome is unknown.
 
 Printing never creates a shipment implicitly.
+
+Confirmed deletions remain recorded on the order and are not automatically
+recreated. An uncertain deletion is not blindly retried.
 
 ### Order custom data
 

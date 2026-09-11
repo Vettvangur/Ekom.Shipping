@@ -23,6 +23,14 @@ public interface IShippingFulfillmentService
     Task<ShippingLabel> GetLabelAsync(
         Guid orderId,
         CancellationToken cancellationToken = default);
+
+    Task<ShippingShipmentDocument> GetShipmentAsync(
+        Guid orderId,
+        CancellationToken cancellationToken = default);
+
+    Task<ShippingFulfillmentRecord> DeleteAsync(
+        Guid orderId,
+        CancellationToken cancellationToken = default);
 }
 
 public interface IShippingAutomationRule

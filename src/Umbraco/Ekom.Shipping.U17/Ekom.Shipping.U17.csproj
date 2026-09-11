@@ -5,7 +5,7 @@
     <Description>Ekom Shipping integration for Umbraco 17.</Description>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../Ekom.Shipping/Ekom.Shipping.csproj" />
+    <ProjectReference Include="../../Ekom.Shipping/Ekom.Shipping.csproj" />
     <PackageReference Include="Ekom.U17" Version="0.2.273" />
     <PackageReference Include="Umbraco.Cms.Core" Version="17.6.2" />
   </ItemGroup>

@@ -20,6 +20,5 @@ public sealed class DroppAccountOptions
 
     public TimeSpan CacheDuration { get; init; } = TimeSpan.FromHours(6);
 
-    public Guid HomeDeliveryLocationId { get; init; } =
-        Guid.Parse("9ec1f30c-2564-4b73-8954-25b7b3186ed3");
+    public Guid HomeDeliveryLocationId { get; init; } = DroppShippingDefaults.HomeDeliveryLocationId;
 }

@@ -1,12 +1,16 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Ekom.Shipping.Core/Ekom.Shipping.Core.csproj" />
-    <Project Path="src/Ekom.Shipping.Dropp/Ekom.Shipping.Dropp.csproj" />
-    <Project Path="src/Ekom.Shipping.IcelandicPost/Ekom.Shipping.IcelandicPost.csproj" />
-    <Project Path="src/Ekom.Shipping.U10/Ekom.Shipping.U10.csproj" />
-    <Project Path="src/Ekom.Shipping.U17/Ekom.Shipping.U17.csproj" />
-    <Project Path="src/Ekom.Shipping.U18/Ekom.Shipping.U18.csproj" />
     <Project Path="src/Ekom.Shipping/Ekom.Shipping.csproj" />
+  </Folder>
+  <Folder Name="/src/Providers/">
+    <Project Path="src/Providers/Ekom.Shipping.Dropp/Ekom.Shipping.Dropp.csproj" />
+    <Project Path="src/Providers/Ekom.Shipping.IcelandicPost/Ekom.Shipping.IcelandicPost.csproj" />
+  </Folder>
+  <Folder Name="/src/Umbraco/">
+    <Project Path="src/Umbraco/Ekom.Shipping.U10/Ekom.Shipping.U10.csproj" />
+    <Project Path="src/Umbraco/Ekom.Shipping.U17/Ekom.Shipping.U17.csproj" />
+    <Project Path="src/Umbraco/Ekom.Shipping.U18/Ekom.Shipping.U18.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Ekom.Shipping.Tests/Ekom.Shipping.Tests.csproj" />
