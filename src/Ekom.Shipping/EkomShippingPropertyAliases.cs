@@ -5,6 +5,7 @@ public static class EkomShippingPropertyAliases
     public const string CarrierAlias = "shippingCarrierAlias";
     public const string AccountReference = "shippingCarrierAccount";
     public const string ServiceId = "shippingCarrierService";
+    public const string FulfillmentMode = "shippingFulfillmentMode";
 
     public const string CustomCarrierAlias = "customshippingCarrierAlias";
     public const string CustomAccountReference = "customshippingAccountReference";
@@ -16,4 +17,11 @@ public static class EkomShippingPropertyAliases
     public const string CustomPickupLocationAddress = "customshippingPickupLocationAddress";
     public const string CustomPickupLocationPostalCode = "customshippingPickupLocationPostalCode";
     public const string CustomPickupLocationCity = "customshippingPickupLocationCity";
+    public const string CustomShipmentId = "customshippingShipmentId";
+    public const string CustomShipmentReference = "customshippingShipmentReference";
+    public const string CustomTrackingNumber = "customshippingTrackingNumber";
+    public const string CustomShipmentState = "customshippingShipmentState";
+    public const string CustomShipmentAttempts = "customshippingShipmentAttempts";
+    public const string CustomShipmentLastError = "customshippingShipmentLastError";
+    public const string CustomShipmentUpdatedUtc = "customshippingShipmentUpdatedUtc";
 }

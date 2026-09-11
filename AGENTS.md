@@ -14,7 +14,9 @@ The full solution requires .NET 10 because the Umbraco 17 and 18 adapters target
 
 - Use explicit DI registration and stable, case-insensitive carrier aliases.
 - Keep credentials in application configuration, never Umbraco content.
-- Keep checkout concerns separate from shipment booking and fulfillment.
+- Store fulfillment state in `ShippingProvider.CustomData`; do not add a shipping table.
+- Automatic fulfillment runs from `CheckoutEvents.CompleteCheckoutAsync` and is independent of order status.
+- Manual actions and automatic processing must use `IShippingFulfillmentService`.
 - Carrier calls must accept cancellation and must not log secrets or PII.
 - Persist only server-validated carrier snapshots under `customshipping*` keys.
 - Use LF line endings.

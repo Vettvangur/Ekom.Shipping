@@ -8,6 +8,7 @@ public sealed class EkomShippingComposer : IComposer
 {
     public void Compose(IUmbracoBuilder builder)
     {
+        builder.Components().Append<EkomShippingEvents>();
         builder.Services.AddEkomShipping();
     }
 }

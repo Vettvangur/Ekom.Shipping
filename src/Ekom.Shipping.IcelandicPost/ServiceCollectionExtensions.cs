@@ -26,7 +26,10 @@ public static class ServiceCollectionExtensions
                 HasValidAccounts,
                 "Every Íslandspóstur account requires HTTPS, credentials, and a positive cache duration.")
             .ValidateOnStart();
-        services.AddSingleton<IShippingCarrier, IcelandicPostCarrier>();
+        services.AddSingleton<IcelandicPostCarrier>();
+        services.AddSingleton<IIcelandicPostShippingService>(
+            provider => provider.GetRequiredService<IcelandicPostCarrier>());
+        services.AddSingleton<IShippingCarrier>(provider => provider.GetRequiredService<IcelandicPostCarrier>());
         return services;
     }
 

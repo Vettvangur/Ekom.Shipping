@@ -3,6 +3,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <PackageId>Ekom.Shipping.U18</PackageId>
     <Description>Ekom Shipping integration for Umbraco 18.</Description>
+    <DefineConstants>$(DefineConstants);UMBRACO_18</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Ekom.Shipping/Ekom.Shipping.csproj" />
@@ -11,5 +12,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../Ekom.Shipping.Umbraco.Shared/EkomShippingComposer.cs" Link="EkomShippingComposer.cs" />
+    <Compile Include="../Ekom.Shipping.Umbraco.Shared/EkomShippingEvents.cs" Link="EkomShippingEvents.cs" />
   </ItemGroup>
 </Project>

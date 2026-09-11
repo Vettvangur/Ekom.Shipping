@@ -11,9 +11,18 @@ public sealed record EkomShippingMethodConfiguration(
     {
         ArgumentNullException.ThrowIfNull(provider);
 
-        provider.Properties.TryGetValue(EkomShippingPropertyAliases.CarrierAlias, out var carrierAlias);
-        provider.Properties.TryGetValue(EkomShippingPropertyAliases.AccountReference, out var accountReference);
-        provider.Properties.TryGetValue(EkomShippingPropertyAliases.ServiceId, out var serviceId);
+        return FromProperties(provider.Key, provider.Properties);
+    }
+
+    public static EkomShippingMethodConfiguration? FromProperties(
+        Guid providerKey,
+        IReadOnlyDictionary<string, string> properties)
+    {
+        ArgumentNullException.ThrowIfNull(properties);
+
+        properties.TryGetValue(EkomShippingPropertyAliases.CarrierAlias, out var carrierAlias);
+        properties.TryGetValue(EkomShippingPropertyAliases.AccountReference, out var accountReference);
+        properties.TryGetValue(EkomShippingPropertyAliases.ServiceId, out var serviceId);
 
         if (string.IsNullOrWhiteSpace(carrierAlias) &&
             string.IsNullOrWhiteSpace(accountReference) &&
@@ -27,7 +36,7 @@ public sealed record EkomShippingMethodConfiguration(
             string.IsNullOrWhiteSpace(serviceId))
         {
             throw new ShippingConfigurationException(
-                $"Ekom shipping provider '{provider.Key}' has incomplete carrier configuration.");
+                $"Ekom shipping provider '{providerKey}' has incomplete carrier configuration.");
         }
 
         return new EkomShippingMethodConfiguration(carrierAlias, accountReference, serviceId);

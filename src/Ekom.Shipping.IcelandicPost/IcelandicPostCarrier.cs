@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 
 namespace Ekom.Shipping.IcelandicPost;
 
-internal sealed class IcelandicPostCarrier : IShippingCarrier
+internal sealed class IcelandicPostCarrier : IIcelandicPostShippingService
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IMemoryCache _cache;

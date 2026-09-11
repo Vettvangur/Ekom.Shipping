@@ -9,6 +9,7 @@ public static class ServiceCollectionExtensions
     {
         services.TryAddScoped<IShippingCarrierRegistry, ShippingCarrierRegistry>();
         services.TryAddScoped<IShippingSelectionValidator, ShippingSelectionValidator>();
+        services.TryAddScoped<IShippingFulfillmentCarrierRegistry, ShippingFulfillmentCarrierRegistry>();
         return services;
     }
 }
