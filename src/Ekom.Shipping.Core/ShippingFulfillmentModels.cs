@@ -25,7 +25,34 @@ public sealed record ShipmentBookingRequest(
 public sealed record ShipmentBookingResult(
     string ShipmentId,
     string? BookingReference = null,
-    string? TrackingNumber = null);
+    string? TrackingNumber = null,
+    IReadOnlyList<ShippingCreationDocument>? Documents = null);
+
+public sealed record ShippingCreationDocument(
+    string TypeCode,
+    string Format,
+    byte[] Content,
+    string ContentType,
+    string FileName,
+    int? PackageReferenceNumber = null);
+
+public sealed record StoredShippingDocument(
+    string Reference,
+    string TypeCode,
+    string Format,
+    string ContentType,
+    string FileName,
+    int? PackageReferenceNumber = null);
+
+public sealed record StoreShippingDocumentsRequest(
+    Guid OrderId,
+    string CarrierAlias,
+    string ShipmentId,
+    IReadOnlyList<ShippingDocumentStorageItem> Documents);
+
+public sealed record ShippingDocumentStorageItem(
+    StoredShippingDocument Document,
+    byte[] Content);
 
 public sealed record ShippingLabel(
     byte[] Content,

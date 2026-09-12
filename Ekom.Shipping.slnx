@@ -4,6 +4,8 @@
     <Project Path="src/Ekom.Shipping/Ekom.Shipping.csproj" />
   </Folder>
   <Folder Name="/src/Providers/">
+    <Project Path="src/Providers/Ekom.Shipping.DhlExpress/Ekom.Shipping.DhlExpress.csproj" />
+    <Project Path="src/Providers/Ekom.Shipping.DhlLocationFinder/Ekom.Shipping.DhlLocationFinder.csproj" />
     <Project Path="src/Providers/Ekom.Shipping.Dropp/Ekom.Shipping.Dropp.csproj" />
     <Project Path="src/Providers/Ekom.Shipping.IcelandicPost/Ekom.Shipping.IcelandicPost.csproj" />
   </Folder>

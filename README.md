@@ -9,8 +9,10 @@ provider services. Shipment state is stored on the order's shipping-provider
 
 - `Ekom.Shipping.Core` — provider-neutral contracts and validation.
 - `Ekom.Shipping` — Ekom shipping-method and order-data integration.
+- [`Ekom.Shipping.DhlExpress`](src/Providers/Ekom.Shipping.DhlExpress/README.md) — MyDHL rates, international fulfillment, creation-time labels, tracking, documents, and pickups.
+- [`Ekom.Shipping.DhlLocationFinder`](src/Providers/Ekom.Shipping.DhlLocationFinder/README.md) — transient DHL Unified location searches.
 - [`Ekom.Shipping.Dropp`](src/Providers/Ekom.Shipping.Dropp/README.md) — Dropp locations, booking, order management, labels, returns, extra packages, and tracking.
-- [`Ekom.Shipping.IcelandicPost`](src/Providers/Ekom.Shipping.IcelandicPost/README.md) — Íslandspóstur services and postboxes.
+- [`Ekom.Shipping.IcelandicPost`](src/Providers/Ekom.Shipping.IcelandicPost/README.md) — Pósturinn services, pickup locations, booking, labels, tracking, and shipment management.
 - `Ekom.Shipping.U10` — Umbraco 13 integration.
 - `Ekom.Shipping.U17` — Umbraco 17 integration.
 - `Ekom.Shipping.U18` — Umbraco 18 integration.
@@ -34,11 +36,44 @@ store only a provider alias, account reference, and service ID.
           }
         }
       },
+      "DhlExpress": {
+        "Accounts": {
+          "dhl-main": {
+            "ApiUrl": "https://express.api.dhl.com/mydhlapi/",
+            "ApiVersion": "3.3.2",
+            "Username": "use-a-secret-provider",
+            "Password": "use-a-secret-provider",
+            "AccountNumber": "billing-account",
+            "ProductCode": "P",
+            "ProductName": "DHL Express",
+            "FulfillmentMode": "Manual",
+            "Shipper": {
+              "Name": "Warehouse contact",
+              "CompanyName": "Merchant",
+              "Phone": "phone",
+              "Email": "shipping@example.com",
+              "AddressLine1": "Origin address",
+              "PostalCode": "101",
+              "CityName": "Reykjavík",
+              "CountryCode": "IS"
+            }
+          }
+        }
+      },
+      "DhlLocationFinder": {
+        "Accounts": {
+          "dhl-locations": {
+            "ApiUrl": "https://api.dhl.com/location-finder/v1/",
+            "ApiKey": "use-a-secret-provider"
+          }
+        }
+      },
       "IcelandicPost": {
         "Accounts": {
           "post-main": {
-            "ApiUrl": "https://api.example/",
-            "ApiKey": "use-a-secret-provider"
+            "ApiUrl": "https://api.mobiz.posturinn.is/api/wscm/",
+            "ApiKey": "use-a-secret-provider",
+            "FulfillmentMode": "Manual"
           }
         }
       }
@@ -51,9 +86,19 @@ Register only the carrier packages used by the site:
 
 ```csharp
 services.AddEkomShipping();
+services.AddDhlExpressShipping(configuration);
+services.AddDhlLocationFinder(configuration);
 services.AddDroppShipping(configuration);
 services.AddIcelandicPostShipping(configuration);
 ```
+
+DHL Express Ekom fulfillment additionally requires one
+`IDhlExpressShipmentEnricher` and one private `IShippingDocumentStore`.
+The enricher supplies measured parcels, planned origin time, and international
+customs data. The document store durably saves creation-time labels while only
+opaque references are retained in `ShippingProvider.CustomData`.
+The store must treat repeated writes to the supplied deterministic references as
+idempotent and define private access control, retention, and order-cleanup rules.
 
 ## Ekom shipping-provider properties
 

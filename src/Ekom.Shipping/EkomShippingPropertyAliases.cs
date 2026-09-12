@@ -19,6 +19,7 @@ public static class EkomShippingPropertyAliases
     public const string CustomShipmentId = "customshippingShipmentId";
     public const string CustomShipmentReference = "customshippingShipmentReference";
     public const string CustomTrackingNumber = "customshippingTrackingNumber";
+    public const string CustomShipmentDocuments = "customshippingShipmentDocuments";
     public const string CustomShipmentState = "customshippingShipmentState";
     public const string CustomShipmentAttempts = "customshippingShipmentAttempts";
     public const string CustomShipmentLastError = "customshippingShipmentLastError";

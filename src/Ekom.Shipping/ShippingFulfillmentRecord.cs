@@ -13,4 +13,5 @@ public sealed record ShippingFulfillmentRecord(
     int AttemptCount,
     string? LastError,
     DateTime OrderCreatedUtc,
-    DateTime UpdatedUtc);
+    DateTime UpdatedUtc,
+    IReadOnlyList<StoredShippingDocument>? Documents = null);
