@@ -1,5 +1,5 @@
 {
-  ".": "0.1.0",
+  ".": "0.1.1",
   "src/Providers/Ekom.Shipping.DhlExpress": "0.1.0",
   "src/Providers/Ekom.Shipping.DhlLocationFinder": "0.1.0",
   "src/Providers/Ekom.Shipping.Dropp": "0.1.0",
