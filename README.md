@@ -17,6 +17,24 @@ provider services. Shipment state is stored on the order's shipping-provider
 - `Ekom.Shipping.U17` — Umbraco 17 integration.
 - `Ekom.Shipping.U18` — Umbraco 18 integration.
 
+## Installation
+
+For Ekom integration, install each carrier package you use and the shipping
+adapter matching your Umbraco version:
+
+| Umbraco version | Shipping adapter |
+|---|---|
+| 13 | `Ekom.Shipping.U10` |
+| 17 | `Ekom.Shipping.U17` |
+| 18 | `Ekom.Shipping.U18` |
+
+NuGet installs `Ekom.Shipping` and `Ekom.Shipping.Core` transitively, so you do
+not need to install them separately. Despite its name, `Ekom.Shipping.U10`
+currently targets Umbraco 13.
+
+For standalone carrier API access without Ekom integration, install only the
+carrier package.
+
 ## Configuration
 
 Credentials remain in application configuration. Backoffice shipping methods
