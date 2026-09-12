@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <PackageId>Ekom.Shipping.IcelandicPost</PackageId>
-    <Description>Íslandspóstur checkout shipping provider for Ekom Shipping.</Description>
+    <Description>Pósturinn checkout and fulfillment provider for Ekom Shipping.</Description>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

@@ -265,7 +265,7 @@ public sealed class CarrierContractTests
         services.AddLogging();
         services.AddIcelandicPostShipping(BuildConfiguration(new Dictionary<string, string?>
         {
-            ["Ekom:Shipping:IcelandicPost:Accounts:main:ApiUrl"] = "https://post.test/api/",
+            ["Ekom:Shipping:IcelandicPost:Accounts:main:ApiUrl"] = "https://post.test/api/wscm/",
             ["Ekom:Shipping:IcelandicPost:Accounts:main:ApiKey"] = "secret",
         }));
         services.AddSingleton<IHttpClientFactory>(new TestHttpClientFactory(handler));
@@ -283,6 +283,212 @@ public sealed class CarrierContractTests
         Assert.Equal(
             "https://post.test/api/wscm/v1/deliveryservicesandprices?countryCode=IS&postCode=101",
             handler.RequestUri?.AbsoluteUri);
+    }
+
+    [Fact]
+    public async Task IcelandicPost_OmitsPostcodeForInternationalServiceLookup()
+    {
+        var handler = new SequenceHandler("""{"deliveryServicesAndPrices":[]}""");
+        var carrier = BuildIcelandicPostCarrier(handler);
+
+        await carrier.GetServicesAsync(
+            "main",
+            new ShippingLookupRequest("store", "DK", "2100"));
+
+        Assert.Equal(
+            "https://post.test/api/wscm/v1/deliveryservicesandprices?countryCode=DK",
+            handler.Requests[0].Uri.AbsoluteUri);
+    }
+
+    [Fact]
+    public async Task IcelandicPost_MapsParcelPoints()
+    {
+        var handler = new SequenceHandler("""
+            {"parcelPoints":[{"parcelPointId":"PP1","name":"Pakkaport","address":"Street 1","postcode":"101","town":"Reykjavík","latitude":"64.1","longitude":"-21.9"}]}
+            """);
+        var carrier = BuildIcelandicPostCarrier(handler);
+
+        var locations = await carrier.GetParcelPointsAsync("main", 101, 5);
+
+        var location = Assert.Single(locations);
+        Assert.Equal("PP1", location.Id);
+        Assert.Equal(64.1, location.Latitude);
+        Assert.Equal(
+            "https://post.test/api/wscm/v1/parcelpoints?postcode=101&maxResults=5",
+            handler.Requests[0].Uri.AbsoluteUri);
+    }
+
+    [Fact]
+    public async Task IcelandicPost_BooksDomesticSingleParcelShipment()
+    {
+        var handler = new SequenceHandler("""{"shipmentId":"CF083141763IS","statusCode":"100"}""");
+        var carrier = BuildIcelandicPostCarrier(handler);
+
+        var result = await ((IShippingFulfillmentCarrier)carrier).CreateShipmentAsync(
+            "main",
+            new ShipmentBookingRequest(
+                "ORDER-1",
+                "DPH",
+                new ShipmentRecipient("Customer", "customer@example.test", "5551234", "Street 1", "101", "Reykjavík", "IS"),
+                [new ShipmentItem("SKU1", "Product", 2)],
+                1200m,
+                "ISK"));
+
+        Assert.Equal("CF083141763IS", result.ShipmentId);
+        Assert.Equal(HttpMethod.Post, handler.Requests[0].Method);
+        using var document = JsonDocument.Parse(handler.Requests[0].Content!);
+        Assert.Equal("DPH", document.RootElement.GetProperty("options").GetProperty("deliveryServiceId").GetString());
+        Assert.Equal(1, document.RootElement.GetProperty("options").GetProperty("numberOfItems").GetInt32());
+        Assert.False(document.RootElement.TryGetProperty("items", out _));
+    }
+
+    [Fact]
+    public async Task IcelandicPost_GetsDeletesAndDownloadsShipment()
+    {
+        var handler = new SequenceHandler(
+            """{"shipmentId":"CF083141763IS","statusCode":"100","statusText":"Registered"}""",
+            "PDF",
+            "{}");
+        var carrier = BuildIcelandicPostCarrier(handler);
+
+        var shipment = await carrier.GetShipmentAsync("main", "CF083141763IS", "EN");
+        var label = await carrier.GetLabelAsync("main", "CF083141763IS");
+        await carrier.DeleteShipmentAsync("main", "CF083141763IS", "IS");
+
+        Assert.Equal("100", shipment.StatusCode);
+        Assert.Equal("application/pdf", label.ContentType);
+        Assert.Equal("https://post.test/api/wscm/v1/shipments/CF083141763IS?language=EN", handler.Requests[0].Uri.AbsoluteUri);
+        Assert.Equal("application/pdf", handler.Requests[1].Accept);
+        Assert.Contains("labelSize=Unknown", handler.Requests[1].Uri.Query);
+        Assert.Equal(HttpMethod.Delete, handler.Requests[2].Method);
+    }
+
+    [Fact]
+    public async Task IcelandicPost_UsesReferenceBatchAndPrintEndpoints()
+    {
+        var handler = new SequenceHandler(
+            """{"shipments":[{"shipmentId":"CF083141763IS","reference":"ORDER-1","isDelivered":false,"isReturnId":false}]}""",
+            "PDF",
+            "");
+        var carrier = BuildIcelandicPostCarrier(handler);
+
+        var references = await carrier.GetShipmentsByReferenceAsync("main", "ORDER-1");
+        await carrier.GetCombinedLabelsAsync("main", ["ID1", "ID2"]);
+        await carrier.PrintAsync("main", "CF083141763IS", 42);
+
+        Assert.Single(references);
+        Assert.Equal("https://post.test/api/wscm/v1/shipmentsByRef/ORDER-1/", handler.Requests[0].Uri.AbsoluteUri);
+        Assert.Equal("?shipmentIds=ID1&shipmentIds=ID2&format=A4Size", handler.Requests[1].Uri.Query);
+        Assert.Equal(HttpMethod.Post, handler.Requests[2].Method);
+        Assert.Contains("printerId=42", handler.Requests[2].Uri.Query);
+    }
+
+    [Fact]
+    public async Task IcelandicPost_TreatsServerErrorAfterBookingAsOutcomeUnknown()
+    {
+        var carrier = BuildIcelandicPostCarrier(new StatusHandler(HttpStatusCode.ServiceUnavailable));
+
+        await Assert.ThrowsAsync<ShipmentOutcomeUnknownException>(() => carrier.CreateShipmentAsync(
+            "main",
+            new IcelandicPostShipmentRequest(
+                new IcelandicPostRecipient("Customer", "Street 1", "101", "IS"),
+                new IcelandicPostShipmentOptions { DeliveryServiceId = "DPH" })));
+    }
+
+    [Fact]
+    public async Task IcelandicPost_DeserializesNumericTrackingEventFields()
+    {
+        var handler = new SequenceHandler("""
+            {"shipmentId":"CF083141763IS","track":[{"lineNumber":1,"eventDateTime":1562318442000,"eventCode":"A"}]}
+            """);
+        var carrier = BuildIcelandicPostCarrier(handler);
+
+        var shipment = await carrier.GetShipmentAsync("main", "CF083141763IS");
+
+        var trackingEvent = Assert.Single(shipment.Track);
+        Assert.Equal(1, trackingEvent.LineNumber);
+        Assert.Equal(1562318442000m, trackingEvent.EventDateTime);
+    }
+
+    [Fact]
+    public async Task IcelandicPost_SerializesInternationalCustomsAndExtendedOptions()
+    {
+        var handler = new SequenceHandler("""{"shipmentId":"RR123456789IS"}""");
+        var carrier = BuildIcelandicPostCarrier(handler);
+
+        await carrier.CreateShipmentAsync(
+            "main",
+            new IcelandicPostShipmentRequest(
+                new IcelandicPostRecipient("Customer", "Street 1", "2100", "DK", "Copenhagen", "customer@example.test"),
+                new IcelandicPostShipmentOptions
+                {
+                    DeliveryServiceId = "RRG",
+                    Cod = true,
+                    CodAmount = "100.50",
+                    PddpShipment = true,
+                    ExportCustomsDeclaration = true,
+                },
+                Contents: [new IcelandicPostCustomsContent(1, "Book", "1", "100.50", "DKK", "490199", "IS")],
+                Customs: new IcelandicPostCustoms(TotalTax: "25.00", Currency: "DKK")));
+
+        using var document = JsonDocument.Parse(handler.Requests[0].Content!);
+        var root = document.RootElement;
+        Assert.True(root.GetProperty("options").GetProperty("cod").GetBoolean());
+        Assert.True(root.GetProperty("options").GetProperty("exportCustomsDeclaration").GetBoolean());
+        Assert.Equal("490199", root.GetProperty("contents")[0].GetProperty("hsTariffNumber").GetString());
+        Assert.Equal("25.00", root.GetProperty("customs").GetProperty("totalTax").GetString());
+    }
+
+    [Fact]
+    public async Task IcelandicPost_RejectsOutOfRangePickupPostcode()
+    {
+        var carrier = BuildIcelandicPostCarrier(new SequenceHandler("{}"));
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            carrier.GetPostboxesAsync("main", 99));
+    }
+
+    [Fact]
+    public void IcelandicPost_ReadsFulfillmentModeFromAccountConfiguration()
+    {
+        var carrier = BuildIcelandicPostCarrier(
+            new StatusHandler(HttpStatusCode.OK),
+            "Automatic");
+
+        Assert.Equal(ShippingFulfillmentMode.Automatic, carrier.GetFulfillmentMode("main"));
+    }
+
+    [Fact]
+    public async Task IcelandicPost_TreatsMalformedSuccessfulBookingAsOutcomeUnknown()
+    {
+        var carrier = BuildIcelandicPostCarrier(new SequenceHandler("{}"));
+
+        await Assert.ThrowsAsync<ShipmentOutcomeUnknownException>(() => carrier.CreateShipmentAsync(
+            "main",
+            new IcelandicPostShipmentRequest(
+                new IcelandicPostRecipient("Customer", "Street 1", "101", "IS"),
+                new IcelandicPostShipmentOptions { DeliveryServiceId = "DPH" })));
+    }
+
+    [Fact]
+    public async Task IcelandicPost_TreatsClientValidationFailureAsDefiniteFailure()
+    {
+        var carrier = BuildIcelandicPostCarrier(new StatusHandler(HttpStatusCode.BadRequest));
+
+        await Assert.ThrowsAsync<ShippingProviderException>(() => carrier.CreateShipmentAsync(
+            "main",
+            new IcelandicPostShipmentRequest(
+                new IcelandicPostRecipient("Customer", "Street 1", "101", "IS"),
+                new IcelandicPostShipmentOptions { DeliveryServiceId = "DPH" })));
+    }
+
+    [Fact]
+    public async Task IcelandicPost_RejectsUnexpectedLabelContentType()
+    {
+        var carrier = BuildIcelandicPostCarrier(new RecordingHandler("not a PDF"));
+
+        await Assert.ThrowsAsync<ShippingProviderException>(() =>
+            carrier.GetLabelAsync("main", "CF083141763IS"));
     }
 
     private static IConfiguration BuildConfiguration(Dictionary<string, string?> values) =>
@@ -308,6 +514,27 @@ public sealed class CarrierContractTests
         services.AddDroppShipping(BuildConfiguration(configuration));
         services.AddSingleton<IHttpClientFactory>(new TestHttpClientFactory(handler));
         return services.BuildServiceProvider().GetRequiredService<IDroppShippingService>();
+    }
+
+    private static IIcelandicPostShippingService BuildIcelandicPostCarrier(
+        HttpMessageHandler handler,
+        string? fulfillmentMode = null)
+    {
+        var configuration = new Dictionary<string, string?>
+        {
+            ["Ekom:Shipping:IcelandicPost:Accounts:main:ApiUrl"] = "https://post.test/api/wscm/",
+            ["Ekom:Shipping:IcelandicPost:Accounts:main:ApiKey"] = "secret",
+        };
+        if (fulfillmentMode is not null)
+        {
+            configuration["Ekom:Shipping:IcelandicPost:Accounts:main:FulfillmentMode"] = fulfillmentMode;
+        }
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddIcelandicPostShipping(BuildConfiguration(configuration));
+        services.AddSingleton<IHttpClientFactory>(new TestHttpClientFactory(handler));
+        return services.BuildServiceProvider().GetRequiredService<IIcelandicPostShippingService>();
     }
 
     private static ShipmentBookingRequest BuildDroppBookingRequest() => new(
@@ -388,10 +615,21 @@ public sealed class CarrierContractTests
             var content = request.Content is null
                 ? null
                 : await request.Content.ReadAsStringAsync(cancellationToken);
-            Requests.Add(new RecordedRequest(request.Method, request.RequestUri!, content));
+            Requests.Add(new RecordedRequest(
+                request.Method,
+                request.RequestUri!,
+                content,
+                request.Headers.Accept.SingleOrDefault()?.MediaType));
+            var mediaType = request.RequestUri!.AbsolutePath.EndsWith("/pod", StringComparison.Ordinal)
+                ? "image/jpeg"
+                : request.RequestUri.AbsolutePath.EndsWith("/pdf", StringComparison.Ordinal) ||
+                  request.RequestUri.AbsolutePath.EndsWith("/pdfs", StringComparison.Ordinal) ||
+                  request.RequestUri.AbsolutePath.Contains("pdf", StringComparison.OrdinalIgnoreCase)
+                    ? "application/pdf"
+                    : "application/json";
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(_responses.Dequeue(), Encoding.UTF8, "application/json"),
+                Content = new StringContent(_responses.Dequeue(), Encoding.UTF8, mediaType),
             };
         }
     }
@@ -421,5 +659,5 @@ public sealed class CarrierContractTests
             Task.FromResult(new HttpResponseMessage(statusCode));
     }
 
-    private sealed record RecordedRequest(HttpMethod Method, Uri Uri, string? Content);
+    private sealed record RecordedRequest(HttpMethod Method, Uri Uri, string? Content, string? Accept);
 }
