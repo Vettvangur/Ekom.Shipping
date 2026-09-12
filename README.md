@@ -209,9 +209,12 @@ to `main`. Release Please maintains five independently versioned components:
 | Icelandic Post | Icelandic Post provider | `Ekom.Shipping.IcelandicPost-v0.1.0` |
 
 Conventional commits under a component's path update only that component's
-release PR and changelog. Merging a Release Please PR creates its component tag;
-the tag workflow rebuilds and tests the full solution, packs only that release
-group, verifies package and symbol files, and publishes them to NuGet.org.
+release PR and changelog. Each release group has an isolated Release Please
+manifest under `.github/release-please`, so provider release PRs do not modify a
+shared version file or conflict with each other. Merging a Release Please PR
+creates its component tag; the tag workflow rebuilds and tests the full
+solution, packs only that release group, verifies package and symbol files, and
+publishes them to NuGet.org.
 
 Repository setup required for releases:
 

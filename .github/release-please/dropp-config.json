@@ -1,0 +1,22 @@
+{
+  "pull-request-title-pattern": "chore${scope}: release ${component} ${version}",
+  "separate-pull-requests": true,
+  "packages": {
+    "src/Providers/Ekom.Shipping.Dropp": {
+      "component": "Ekom.Shipping.Dropp",
+      "package-name": "Ekom.Shipping.Dropp",
+      "include-component-in-tag": true,
+      "release-type": "simple",
+      "bump-minor-pre-major": false,
+      "bump-patch-for-minor-pre-major": true,
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "xml",
+          "path": "Ekom.Shipping.Dropp.csproj",
+          "xpath": "/Project/PropertyGroup/Version"
+        }
+      ]
+    }
+  }
+}

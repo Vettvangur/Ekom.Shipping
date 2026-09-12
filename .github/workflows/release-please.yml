@@ -9,12 +9,26 @@ permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release-please:
+    name: release-please (${{ matrix.group }})
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        group:
+          - framework
+          - dhl-express
+          - dhl-location-finder
+          - dropp
+          - icelandic-post
     steps:
       - uses: googleapis/release-please-action@v4
         with:
-          config-file: release-please-config.json
-          manifest-file: .release-please-manifest.json
+          config-file: .github/release-please/${{ matrix.group }}-config.json
+          manifest-file: .github/release-please/${{ matrix.group }}-manifest.json
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
