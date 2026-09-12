@@ -2,6 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <PackageId>Ekom.Shipping.DhlExpress</PackageId>
+    <Version>0.1.0</Version>
     <Description>DHL Express MyDHL checkout and international fulfillment provider for Ekom Shipping.</Description>
   </PropertyGroup>
   <ItemGroup>
