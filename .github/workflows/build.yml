@@ -1,0 +1,88 @@
+name: build
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-pack:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore "Ekom.Shipping.slnx"
+
+      - name: Build (Release)
+        run: dotnet build "Ekom.Shipping.slnx" -c Release --no-restore
+
+      - name: Test
+        run: dotnet test "tests/Ekom.Shipping.Tests/Ekom.Shipping.Tests.csproj" -c Release --no-build --no-restore
+
+      - name: Pack and verify packages
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+
+          if (Test-Path "artifacts") { Remove-Item "artifacts" -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path "artifacts" | Out-Null
+
+          $projects = @(
+            "src/Ekom.Shipping.Core/Ekom.Shipping.Core.csproj"
+            "src/Ekom.Shipping/Ekom.Shipping.csproj"
+            "src/Providers/Ekom.Shipping.DhlExpress/Ekom.Shipping.DhlExpress.csproj"
+            "src/Providers/Ekom.Shipping.DhlLocationFinder/Ekom.Shipping.DhlLocationFinder.csproj"
+            "src/Providers/Ekom.Shipping.Dropp/Ekom.Shipping.Dropp.csproj"
+            "src/Providers/Ekom.Shipping.IcelandicPost/Ekom.Shipping.IcelandicPost.csproj"
+            "src/Umbraco/Ekom.Shipping.U10/Ekom.Shipping.U10.csproj"
+            "src/Umbraco/Ekom.Shipping.U17/Ekom.Shipping.U17.csproj"
+            "src/Umbraco/Ekom.Shipping.U18/Ekom.Shipping.U18.csproj"
+          )
+          foreach ($project in $projects) {
+            dotnet pack $project -c Release --no-build --no-restore -o "artifacts"
+          }
+
+          $expectedIds = @(
+            "Ekom.Shipping.Core"
+            "Ekom.Shipping"
+            "Ekom.Shipping.DhlExpress"
+            "Ekom.Shipping.DhlLocationFinder"
+            "Ekom.Shipping.Dropp"
+            "Ekom.Shipping.IcelandicPost"
+            "Ekom.Shipping.U10"
+            "Ekom.Shipping.U17"
+            "Ekom.Shipping.U18"
+          )
+          foreach ($id in $expectedIds) {
+            if (-not (Get-ChildItem "artifacts/$id.*.nupkg" -File -ErrorAction SilentlyContinue)) {
+              throw "Missing package for $id"
+            }
+            if (-not (Get-ChildItem "artifacts/$id.*.snupkg" -File -ErrorAction SilentlyContinue)) {
+              throw "Missing symbol package for $id"
+            }
+          }
+
+          $packages = Get-ChildItem "artifacts/*.nupkg" -File
+          if ($packages.Count -ne 9) { throw "Expected 9 NuGet packages, found $($packages.Count)." }
+          $packages | Format-Table Name,Length
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: artifacts/*.*nupkg
+          if-no-files-found: error

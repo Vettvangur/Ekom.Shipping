@@ -1,0 +1,175 @@
+name: publish-ekom-shipping
+
+on:
+  push:
+    tags:
+      - "Ekom.Shipping-v*"
+      - "Ekom.Shipping.DhlExpress-v*"
+      - "Ekom.Shipping.DhlLocationFinder-v*"
+      - "Ekom.Shipping.Dropp-v*"
+      - "Ekom.Shipping.IcelandicPost-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ env.RELEASE_TAG }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Resolve and validate release
+        id: release
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $tag = $env:RELEASE_TAG
+          if ($tag -notmatch '^(?<component>Ekom\.Shipping(?:\.DhlExpress|\.DhlLocationFinder|\.Dropp|\.IcelandicPost)?)-v(?<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z\.-]+)?)$') {
+            throw "Unsupported release tag '$tag'."
+          }
+
+          $component = $Matches['component']
+          $version = $Matches['version']
+          switch ($component) {
+            "Ekom.Shipping" {
+              $versionFile = "Directory.Build.props"
+              $projects = @(
+                "src/Ekom.Shipping.Core/Ekom.Shipping.Core.csproj"
+                "src/Ekom.Shipping/Ekom.Shipping.csproj"
+                "src/Umbraco/Ekom.Shipping.U10/Ekom.Shipping.U10.csproj"
+                "src/Umbraco/Ekom.Shipping.U17/Ekom.Shipping.U17.csproj"
+                "src/Umbraco/Ekom.Shipping.U18/Ekom.Shipping.U18.csproj"
+              )
+              $expectedIds = @(
+                "Ekom.Shipping.Core"
+                "Ekom.Shipping"
+                "Ekom.Shipping.U10"
+                "Ekom.Shipping.U17"
+                "Ekom.Shipping.U18"
+              )
+            }
+            "Ekom.Shipping.DhlExpress" {
+              $versionFile = "src/Providers/Ekom.Shipping.DhlExpress/Ekom.Shipping.DhlExpress.csproj"
+              $projects = @($versionFile)
+              $expectedIds = @($component)
+            }
+            "Ekom.Shipping.DhlLocationFinder" {
+              $versionFile = "src/Providers/Ekom.Shipping.DhlLocationFinder/Ekom.Shipping.DhlLocationFinder.csproj"
+              $projects = @($versionFile)
+              $expectedIds = @($component)
+            }
+            "Ekom.Shipping.Dropp" {
+              $versionFile = "src/Providers/Ekom.Shipping.Dropp/Ekom.Shipping.Dropp.csproj"
+              $projects = @($versionFile)
+              $expectedIds = @($component)
+            }
+            "Ekom.Shipping.IcelandicPost" {
+              $versionFile = "src/Providers/Ekom.Shipping.IcelandicPost/Ekom.Shipping.IcelandicPost.csproj"
+              $projects = @($versionFile)
+              $expectedIds = @($component)
+            }
+            default { throw "Unsupported release component '$component'." }
+          }
+
+          [xml]$versionXml = Get-Content $versionFile
+          $sourceVersion = [string]$versionXml.Project.PropertyGroup.Version
+          if ($sourceVersion -ne $version) {
+            throw "Tag version $version does not match $versionFile version $sourceVersion."
+          }
+
+          "component=$component" >> $env:GITHUB_OUTPUT
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "projects=$($projects -join ';')" >> $env:GITHUB_OUTPUT
+          "expected_ids=$($expectedIds -join ';')" >> $env:GITHUB_OUTPUT
+
+      - name: Restore
+        run: dotnet restore "Ekom.Shipping.slnx"
+
+      - name: Build (Release)
+        run: dotnet build "Ekom.Shipping.slnx" -c Release --no-restore
+
+      - name: Test
+        run: dotnet test "tests/Ekom.Shipping.Tests/Ekom.Shipping.Tests.csproj" -c Release --no-build --no-restore
+
+      - name: Pack release component
+        shell: pwsh
+        env:
+          PROJECTS: ${{ steps.release.outputs.projects }}
+          EXPECTED_IDS: ${{ steps.release.outputs.expected_ids }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+
+          if (Test-Path "artifacts") { Remove-Item "artifacts" -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path "artifacts" | Out-Null
+
+          foreach ($project in $env:PROJECTS.Split(';')) {
+            dotnet pack $project -c Release --no-build --no-restore -o "artifacts"
+          }
+
+          foreach ($id in $env:EXPECTED_IDS.Split(';')) {
+            $package = "artifacts/$id.$env:VERSION.nupkg"
+            $symbols = "artifacts/$id.$env:VERSION.snupkg"
+            if (-not (Test-Path $package -PathType Leaf)) { throw "Missing expected package $package" }
+            if (-not (Test-Path $symbols -PathType Leaf)) { throw "Missing expected symbol package $symbols" }
+          }
+
+          $actualPackages = Get-ChildItem "artifacts/*.nupkg" -File
+          $expectedCount = $env:EXPECTED_IDS.Split(';').Count
+          if ($actualPackages.Count -ne $expectedCount) {
+            throw "Expected $expectedCount packages, found $($actualPackages.Count)."
+          }
+          $actualPackages | Format-Table Name,Length
+
+      - name: Upload release packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.release.outputs.component }}-${{ steps.release.outputs.version }}
+          path: artifacts/*.*nupkg
+          if-no-files-found: error
+
+      - name: NuGet Login (OIDC)
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: Vettvangur
+
+      - name: Push to NuGet.org
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+
+          $packages = Get-ChildItem "artifacts/*.nupkg" -File
+          if (-not $packages) { throw "No NuGet packages were created." }
+          foreach ($package in $packages) {
+            Write-Host "Pushing $($package.Name)"
+            dotnet nuget push "$($package.FullName)" `
+              --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" `
+              --source "https://api.nuget.org/v3/index.json" `
+              --skip-duplicate
+          }

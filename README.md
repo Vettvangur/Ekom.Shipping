@@ -179,6 +179,7 @@ The orchestration service stores these values under `ShippingProvider.CustomData
 - `customshippingShipmentReference`
 - `customshippingShipmentId`
 - `customshippingTrackingNumber`
+- `customshippingShipmentDocuments`
 - `customshippingShipmentLastError`
 - `customshippingShipmentUpdatedUtc`
 - `customshippingCarrierAlias`
@@ -193,3 +194,36 @@ submission becomes `OutcomeUnknown` and is not blindly retried, because Dropp's
 idempotency behavior has not been confirmed. Per-order semaphores prevent
 duplicate submissions within one application process. Multi-node sites should
 add a distributed order lock before enabling automatic creation.
+
+## Releases and NuGet publishing
+
+GitHub Actions builds, tests, and packs all projects on pull requests and pushes
+to `main`. Release Please maintains five independently versioned components:
+
+| Component | Packages | Tag format |
+|---|---|---|
+| Ekom Shipping framework | Core, Ekom integration, U10, U17, and U18 | `Ekom.Shipping-v0.1.0` |
+| DHL Express | DHL Express provider | `Ekom.Shipping.DhlExpress-v0.1.0` |
+| DHL Location Finder | Location Finder client | `Ekom.Shipping.DhlLocationFinder-v0.1.0` |
+| Dropp | Dropp provider | `Ekom.Shipping.Dropp-v0.1.0` |
+| Icelandic Post | Icelandic Post provider | `Ekom.Shipping.IcelandicPost-v0.1.0` |
+
+Conventional commits under a component's path update only that component's
+release PR and changelog. Merging a Release Please PR creates its component tag;
+the tag workflow rebuilds and tests the full solution, packs only that release
+group, verifies package and symbol files, and publishes them to NuGet.org.
+
+Repository setup required for releases:
+
+1. Add the `RELEASE_PLEASE_TOKEN` repository secret, matching the Ekom
+   repository setup. The token must be able to create release PRs, releases, and
+   tags so tag workflows are triggered.
+2. Configure NuGet.org trusted publishing for every package, using owner
+   `Vettvangur`, repository `Ekom.Shipping`, and workflow
+   `publish-ekom-shipping.yml`.
+3. Ensure the `Vettvangur` NuGet organization owns each package ID. New package
+   IDs may require an initial ownership or trusted-publishing setup step.
+
+Publishing can be rerun manually by supplying an existing component release tag
+to the workflow. Arbitrary branch versions are rejected, and the tag version
+must match the component version checked into that tag.
