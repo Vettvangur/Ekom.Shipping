@@ -4,6 +4,22 @@ Dropp checkout and fulfillment integration for Ekom. The package supports pickup
 locations, home-delivery availability, shipment creation and management, labels,
 extra packages, returns, and tracking.
 
+## Installation
+
+For Dropp with Ekom on Umbraco 17:
+
+```bash
+dotnet add package Ekom.Shipping.Dropp
+dotnet add package Ekom.Shipping.U17
+```
+
+Use `Ekom.Shipping.U10` for Umbraco 13 or `Ekom.Shipping.U18` for Umbraco 18.
+You do not need to install `Ekom.Shipping` or `Ekom.Shipping.Core` separately.
+Then register Dropp with `services.AddDroppShipping(configuration)`.
+
+For standalone Dropp API access without Ekom integration, install only
+`Ekom.Shipping.Dropp`.
+
 ## Official Dropp API documentation
 
 - [Dropp API documentation](https://documenter.getpostman.com/view/1057001/SzKPU13n?version=latest)
@@ -37,9 +53,8 @@ keep it in application configuration.
 }
 ```
 
-Register the package with `services.AddDroppShipping(configuration)`. Set the
-Ekom shipping provider properties to carrier alias `dropp`, the configured
-account name, and service `pickup` or `home-delivery`.
+Set the Ekom shipping provider properties to carrier alias `dropp`, the
+configured account name, and service `pickup` or `home-delivery`.
 
 `FulfillmentMode` defaults to `Manual`. Set it to `Automatic` to create a
 shipment during `CheckoutEvents.CompleteCheckoutAsync`.
