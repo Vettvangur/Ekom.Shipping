@@ -1,0 +1,30 @@
+{
+  "pull-request-title-pattern": "chore${scope}: release ${component} ${version}",
+  "separate-pull-requests": true,
+  "packages": {
+    ".": {
+      "component": "Ekom.Shipping",
+      "package-name": "Ekom.Shipping",
+      "include-component-in-tag": true,
+      "release-type": "simple",
+      "bump-minor-pre-major": false,
+      "bump-patch-for-minor-pre-major": true,
+      "changelog-path": "CHANGELOG.md",
+      "exclude-paths": [
+        "src/Providers",
+        "tests",
+        ".github/release-please",
+        ".github/workflows/release-please.yml",
+        "release-please-config.json",
+        ".release-please-manifest.json"
+      ],
+      "extra-files": [
+        {
+          "type": "xml",
+          "path": "Directory.Build.props",
+          "xpath": "/Project/PropertyGroup/Version"
+        }
+      ]
+    }
+  }
+}
