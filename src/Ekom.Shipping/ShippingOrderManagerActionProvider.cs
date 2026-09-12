@@ -9,6 +9,8 @@ internal sealed class ShippingOrderManagerActionProvider : IOrderManagerActionPr
     internal const string CreateAction = "ekom-shipping-create";
     internal const string RetryAction = "ekom-shipping-retry";
     internal const string LabelAction = "ekom-shipping-label";
+    internal const string ViewAction = "ekom-shipping-view";
+    internal const string DeleteAction = "ekom-shipping-delete";
     private readonly IShippingFulfillmentService _fulfillment;
     private readonly IShippingFulfillmentCarrierRegistry _carriers;
 
@@ -29,8 +31,9 @@ internal sealed class ShippingOrderManagerActionProvider : IOrderManagerActionPr
                 orderInfo.ShippingProvider.Key,
                 orderInfo.ShippingProvider.Properties);
         var carrierAlias = record?.CarrierAlias ?? configuration?.CarrierAlias;
-        if (string.IsNullOrWhiteSpace(carrierAlias) || !_carriers.Carriers.Any(x =>
-                string.Equals(x.Alias, carrierAlias, StringComparison.OrdinalIgnoreCase)))
+        var carrier = _carriers.Carriers.FirstOrDefault(x =>
+            string.Equals(x.Alias, carrierAlias, StringComparison.OrdinalIgnoreCase));
+        if (string.IsNullOrWhiteSpace(carrierAlias) || carrier is null)
         {
             return Array.Empty<OrderManagerAction>();
         }
@@ -38,15 +41,7 @@ internal sealed class ShippingOrderManagerActionProvider : IOrderManagerActionPr
         return record?.State switch
         {
             ShippingFulfillmentState.Created =>
-            [
-                new OrderManagerAction
-                {
-                    Key = LabelAction,
-                    Label = "Print shipping label",
-                    Look = "primary",
-                    SortOrder = 20,
-                },
-            ],
+                CreatedActions(carrier),
             ShippingFulfillmentState.Failed =>
             [
                 new OrderManagerAction
@@ -78,6 +73,18 @@ internal sealed class ShippingOrderManagerActionProvider : IOrderManagerActionPr
                     Enabled = false,
                     SortOrder = 20,
                 },
+            ],
+            ShippingFulfillmentState.Deleting =>
+            [
+                DisabledAction(DeleteAction, "Deleting shipment…"),
+            ],
+            ShippingFulfillmentState.Deleted =>
+            [
+                DisabledAction(DeleteAction, "Shipment deleted"),
+            ],
+            ShippingFulfillmentState.DeleteOutcomeUnknown =>
+            [
+                DisabledAction(DeleteAction, "Deletion outcome unknown", "danger"),
             ],
             _ =>
             [
@@ -117,6 +124,22 @@ internal sealed class ShippingOrderManagerActionProvider : IOrderManagerActionPr
                         ContentType = label.ContentType,
                         FileName = label.FileName,
                     };
+                case ViewAction:
+                    var shipment = await _fulfillment.GetShipmentAsync(orderInfo.UniqueId, ct).ConfigureAwait(false);
+                    return new OrderManagerActionFileResult
+                    {
+                        Content = shipment.Content,
+                        ContentType = shipment.ContentType,
+                        FileName = shipment.FileName,
+                    };
+                case DeleteAction:
+                    var deleted = await _fulfillment.DeleteAsync(orderInfo.UniqueId, ct).ConfigureAwait(false);
+                    return deleted.State == ShippingFulfillmentState.Deleted
+                        ? new OrderManagerActionSuccessResult { Message = "Shipment deleted." }
+                        : new OrderManagerActionBadRequestResult
+                        {
+                            Message = deleted.LastError ?? $"Shipment state: {deleted.State}.",
+                        };
                 default:
                     return null;
             }
@@ -137,4 +160,52 @@ internal sealed class ShippingOrderManagerActionProvider : IOrderManagerActionPr
             {
                 Message = record.LastError ?? $"Shipment state: {record.State}.",
             };
+
+    private static IReadOnlyCollection<OrderManagerAction> CreatedActions(IShippingFulfillmentCarrier carrier)
+    {
+        var actions = new List<OrderManagerAction>();
+        if (carrier.Capabilities.HasFlag(ShippingCarrierCapabilities.Labels))
+        {
+            actions.Add(new OrderManagerAction
+            {
+                Key = LabelAction,
+                Label = "Print shipping label",
+                Look = "primary",
+                SortOrder = 20,
+            });
+        }
+
+        if (carrier.Capabilities.HasFlag(ShippingCarrierCapabilities.ShipmentLookup))
+        {
+            actions.Add(new OrderManagerAction
+            {
+                Key = ViewAction,
+                Label = "View shipment JSON",
+                SortOrder = 21,
+            });
+        }
+
+        if (carrier.Capabilities.HasFlag(ShippingCarrierCapabilities.ShipmentDeletion))
+        {
+            actions.Add(new OrderManagerAction
+            {
+                Key = DeleteAction,
+                Label = "Delete shipment",
+                Look = "danger",
+                ConfirmMessage = "Delete this shipment from the carrier? This is only possible before collection.",
+                SortOrder = 22,
+            });
+        }
+
+        return actions;
+    }
+
+    private static OrderManagerAction DisabledAction(string key, string label, string? look = null) => new()
+    {
+        Key = key,
+        Label = label,
+        Look = look ?? string.Empty,
+        Enabled = false,
+        SortOrder = 20,
+    };
 }

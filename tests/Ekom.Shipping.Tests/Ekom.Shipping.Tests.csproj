@@ -20,7 +20,9 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <ProjectReference Include="../../src/Ekom.Shipping.Core/Ekom.Shipping.Core.csproj" />
     <ProjectReference Include="../../src/Ekom.Shipping/Ekom.Shipping.csproj" />
-    <ProjectReference Include="../../src/Ekom.Shipping.Dropp/Ekom.Shipping.Dropp.csproj" />
-    <ProjectReference Include="../../src/Ekom.Shipping.IcelandicPost/Ekom.Shipping.IcelandicPost.csproj" />
+    <ProjectReference Include="../../src/Providers/Ekom.Shipping.Dropp/Ekom.Shipping.Dropp.csproj" />
+    <ProjectReference Include="../../src/Providers/Ekom.Shipping.DhlExpress/Ekom.Shipping.DhlExpress.csproj" />
+    <ProjectReference Include="../../src/Providers/Ekom.Shipping.DhlLocationFinder/Ekom.Shipping.DhlLocationFinder.csproj" />
+    <ProjectReference Include="../../src/Providers/Ekom.Shipping.IcelandicPost/Ekom.Shipping.IcelandicPost.csproj" />
   </ItemGroup>
 </Project>

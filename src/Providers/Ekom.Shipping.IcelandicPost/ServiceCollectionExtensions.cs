@@ -24,12 +24,13 @@ public static class ServiceCollectionExtensions
             .Bind(configuration.GetSection(IcelandicPostOptions.SectionName))
             .Validate(
                 HasValidAccounts,
-                "Every Íslandspóstur account requires HTTPS, credentials, and a positive cache duration.")
+                "Every Íslandspóstur account requires HTTPS, credentials, valid modes, and a positive cache duration.")
             .ValidateOnStart();
         services.AddSingleton<IcelandicPostCarrier>();
         services.AddSingleton<IIcelandicPostShippingService>(
             provider => provider.GetRequiredService<IcelandicPostCarrier>());
         services.AddSingleton<IShippingCarrier>(provider => provider.GetRequiredService<IcelandicPostCarrier>());
+        services.AddSingleton<IShippingFulfillmentCarrier>(provider => provider.GetRequiredService<IcelandicPostCarrier>());
         return services;
     }
 
@@ -38,5 +39,7 @@ public static class ServiceCollectionExtensions
             Uri.TryCreate(account.ApiUrl, UriKind.Absolute, out var uri) &&
             uri.Scheme == Uri.UriSchemeHttps &&
             !string.IsNullOrWhiteSpace(account.ApiKey) &&
+            Enum.IsDefined(account.LabelFormat) &&
+            Enum.IsDefined(account.FulfillmentMode) &&
             account.CacheDuration > TimeSpan.Zero);
 }

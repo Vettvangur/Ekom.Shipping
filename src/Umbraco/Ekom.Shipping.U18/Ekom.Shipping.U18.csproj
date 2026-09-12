@@ -6,7 +6,7 @@
     <DefineConstants>$(DefineConstants);UMBRACO_18</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../Ekom.Shipping/Ekom.Shipping.csproj" />
+    <ProjectReference Include="../../Ekom.Shipping/Ekom.Shipping.csproj" />
     <PackageReference Include="Ekom.U18" Version="0.2.273" />
     <PackageReference Include="Umbraco.Cms.Core" Version="18.1.1" />
   </ItemGroup>

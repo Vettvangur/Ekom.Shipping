@@ -10,6 +10,10 @@ public sealed class IcelandicPostOptions
 
 public sealed class IcelandicPostAccountOptions
 {
+    public ShippingFulfillmentMode FulfillmentMode { get; init; } = ShippingFulfillmentMode.Manual;
+
+    public IcelandicPostLabelFormat LabelFormat { get; init; } = IcelandicPostLabelFormat.Unknown;
+
     public string ApiUrl { get; init; } = string.Empty;
 
     public string ApiKey { get; init; } = string.Empty;

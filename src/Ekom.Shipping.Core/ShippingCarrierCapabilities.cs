@@ -9,4 +9,6 @@ public enum ShippingCarrierCapabilities
     ShipmentBooking = 4,
     Labels = 8,
     Tracking = 16,
+    ShipmentLookup = 32,
+    ShipmentDeletion = 64,
 }
