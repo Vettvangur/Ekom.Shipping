@@ -3,7 +3,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Authors>Vettvangur</Authors>
     <Company>Vettvangur</Company>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -19,6 +19,6 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
   </PropertyGroup>
   <ItemGroup Condition="'$(IsPackable)' != 'false'">
-    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="/" />
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="/"/>
   </ItemGroup>
 </Project>
