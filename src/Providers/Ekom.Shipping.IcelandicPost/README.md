@@ -38,9 +38,21 @@ the key in application configuration.
 }
 ```
 
-Register with `services.AddIcelandicPostShipping(configuration)`. Set the Ekom
-shipping provider carrier alias to `icelandic-post`, its account to the
-configured account name, and its service to an ID returned by Pósturinn.
+### Umbraco provider node
+
+Set these properties on the Ekom shipping provider node:
+
+| Property | Value |
+|---|---|
+| `shippingCarrierAlias` | `icelandic-post` |
+| `shippingCarrierAccount` | The configured account name, for example `post-main` |
+| `shippingCarrierService` | A delivery-service ID returned by Pósturinn |
+
+Generic pickup IDs such as `DPO`, `DNO`, `DPT`, and `DPP` cannot be used for
+fulfillment; use the carrier-qualified service ID returned for the selected
+pickup destination.
+
+Register with `services.AddIcelandicPostShipping(configuration)`.
 
 `FulfillmentMode` defaults to `Manual`. Set it to `Automatic` to create a
 shipment from `CheckoutEvents.CompleteCheckoutAsync`.
