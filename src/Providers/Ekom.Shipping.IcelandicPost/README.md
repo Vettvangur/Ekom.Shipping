@@ -86,6 +86,21 @@ Register with `services.AddIcelandicPostShipping(configuration)`.
 
 `FulfillmentMode` defaults to `Manual`. Set it to `Automatic` to create a
 shipment from `CheckoutEvents.CompleteCheckoutAsync`.
+`CacheDuration` applies to postboxes, parcel points, and post offices and
+defaults to three hours.
+
+## Public pickup locations
+
+With an `Ekom.Shipping.U*` adapter installed, checkout UIs can load the
+configured provider's cached locations without a custom controller:
+
+```http
+GET /ekom/shipping/providers/{providerKey}/pickup-locations?storeAlias=main&countryCode=IS&postalCode=101
+```
+
+`providerKey` is the Ekom shipping provider node key. The configured service ID
+determines whether the response contains postboxes, parcel points, or post
+offices.
 
 ## Supported API operations
 

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -19,6 +20,7 @@ internal sealed class IcelandicPostCarrier : IIcelandicPostShippingService
     private readonly IMemoryCache _cache;
     private readonly ILogger<IcelandicPostCarrier> _logger;
     private readonly IcelandicPostOptions _options;
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _cacheLocks = new(StringComparer.Ordinal);
 
     public IcelandicPostCarrier(
         IHttpClientFactory httpClientFactory,
@@ -153,13 +155,21 @@ internal sealed class IcelandicPostCarrier : IIcelandicPostShippingService
         CancellationToken cancellationToken = default)
     {
         var account = GetAccount(accountReference);
-        var payload = await GetJsonAsync<PostOfficesResponse>(
-            accountReference,
-            account,
-            BuildUri(account, "v1/postoffices"),
+        var cacheKey = $"ekom-shipping:icelandic-post:{accountReference}:postoffices";
+        return await GetOrCreateCachedAsync<IReadOnlyList<IcelandicPostPickupLocation>>(
+            cacheKey,
+            account.CacheDuration,
+            async ct =>
+            {
+                var payload = await GetJsonAsync<PostOfficesResponse>(
+                    accountReference,
+                    account,
+                    BuildUri(account, "v1/postoffices"),
+                    ct).ConfigureAwait(false);
+                return payload?.PostOffices?.Select(x => x.ToLocation()).ToArray()
+                    ?? throw InvalidResponse("post offices collection");
+            },
             cancellationToken).ConfigureAwait(false);
-        return payload?.PostOffices?.Select(x => x.ToLocation()).ToArray()
-            ?? throw InvalidResponse("post offices collection");
     }
 
     public Task<string?> ReserveBookingReferenceAsync(
@@ -508,24 +518,55 @@ internal sealed class IcelandicPostCarrier : IIcelandicPostShippingService
 
         var account = GetAccount(accountReference);
         var cacheKey = $"ekom-shipping:icelandic-post:{accountReference}:{endpoint}:{postcode}:{maxResults}";
-        if (_cache.TryGetValue(cacheKey, out IReadOnlyList<IcelandicPostPickupLocation>? cached) && cached is not null)
+        return await GetOrCreateCachedAsync<IReadOnlyList<IcelandicPostPickupLocation>>(
+            cacheKey,
+            account.CacheDuration,
+            async ct =>
+            {
+                var response = await GetJsonAsync<PickupLocationsResponse>(
+                    accountReference,
+                    account,
+                    BuildUri(account, $"v1/{endpoint}", [
+                        new("postcode", postcode?.ToString(CultureInfo.InvariantCulture)),
+                        new("maxResults", maxResults?.ToString(CultureInfo.InvariantCulture)),
+                    ]),
+                    ct).ConfigureAwait(false);
+                var locations = (collectionName == "postboxes" ? response?.Postboxes : response?.ParcelPoints)
+                    ?? throw InvalidResponse($"{collectionName} collection");
+                return locations.Select(x => x.ToLocation()).ToArray();
+            },
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<T> GetOrCreateCachedAsync<T>(
+        string cacheKey,
+        TimeSpan cacheDuration,
+        Func<CancellationToken, Task<T>> factory,
+        CancellationToken cancellationToken)
+        where T : class
+    {
+        if (_cache.TryGetValue(cacheKey, out T? cached) && cached is not null)
         {
             return cached;
         }
 
-        var response = await GetJsonAsync<PickupLocationsResponse>(
-            accountReference,
-            account,
-            BuildUri(account, $"v1/{endpoint}", [
-                new("postcode", postcode?.ToString(CultureInfo.InvariantCulture)),
-                new("maxResults", maxResults?.ToString(CultureInfo.InvariantCulture)),
-            ]),
-            cancellationToken).ConfigureAwait(false);
-        var locations = (collectionName == "postboxes" ? response?.Postboxes : response?.ParcelPoints)
-            ?? throw InvalidResponse($"{collectionName} collection");
-        var result = locations.Select(x => x.ToLocation()).ToArray();
-        _cache.Set(cacheKey, result, account.CacheDuration);
-        return result;
+        var cacheLock = _cacheLocks.GetOrAdd(cacheKey, static _ => new SemaphoreSlim(1, 1));
+        await cacheLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_cache.TryGetValue(cacheKey, out cached) && cached is not null)
+            {
+                return cached;
+            }
+
+            var result = await factory(cancellationToken).ConfigureAwait(false);
+            _cache.Set(cacheKey, result, cacheDuration);
+            return result;
+        }
+        finally
+        {
+            cacheLock.Release();
+        }
     }
 
     private async Task<T?> GetJsonAsync<T>(
