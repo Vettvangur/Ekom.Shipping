@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.2](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping-v0.1.1...Ekom.Shipping-v0.1.2) (2026-09-14)
+
+
+### Features
+
+* add public pickup location endpoint ([0019beb](https://github.com/Vettvangur/Ekom.Shipping/commit/0019beb933f43f3255bb93b7505e2cae51d6036a))
+* add public pickup location endpoint ([ad0dc45](https://github.com/Vettvangur/Ekom.Shipping/commit/ad0dc45aee7055bfef9574900188819281e6a47e))
+
 ## [0.1.1](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping-v0.1.0...Ekom.Shipping-v0.1.1) (2026-09-12)
 
 
