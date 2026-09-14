@@ -48,9 +48,39 @@ Set these properties on the Ekom shipping provider node:
 | `shippingCarrierAccount` | The configured account name, for example `post-main` |
 | `shippingCarrierService` | A delivery-service ID returned by Pósturinn |
 
-Generic pickup IDs such as `DPO`, `DNO`, `DPT`, and `DPP` cannot be used for
-fulfillment; use the carrier-qualified service ID returned for the selected
-pickup destination.
+Common service IDs are:
+
+| Service ID | Delivery type |
+|---|---|
+| `DPH` | Normal address delivery used by the current integration examples |
+| `DPO` | Póstbox selection |
+| `DNO` | Alternative Póstbox service when returned by Pósturinn |
+| `DPT` | Parcel point selection |
+| `DPP` | Post office selection |
+
+Most sites only need normal address delivery and Póstbox delivery. Configure
+separate Ekom shipping provider nodes for them.
+
+Normal address delivery:
+
+```text
+shippingCarrierAlias: icelandic-post
+shippingCarrierAccount: post-main
+shippingCarrierService: DPH
+```
+
+Póstbox selection:
+
+```text
+shippingCarrierAlias: icelandic-post
+shippingCarrierAccount: post-main
+shippingCarrierService: DPO
+```
+
+Confirm that Pósturinn returns the configured service for the destination and
+account. `DPO` enables Póstbox selection at checkout, but built-in fulfillment
+cannot book a generic pickup ID. Booking requires the carrier-qualified service
+ID returned for the selected Póstbox, and that mapping is not automatic.
 
 Register with `services.AddIcelandicPostShipping(configuration)`.
 
@@ -106,9 +136,6 @@ delivery service before setting them.
 
 ## Pickup services
 
-- Generic `DPO` and `DNO` represent postbox selection.
-- `DPT` represents parcel points.
-- Generic `DPP` represents post-office selection.
 - Qualified IDs such as `DPO1013` and `DPP200` identify a carrier-selected
   destination and are preserved as returned.
 
