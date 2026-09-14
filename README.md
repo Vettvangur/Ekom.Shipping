@@ -155,6 +155,25 @@ with the order come from the carrier rather than the browser.
 Sites remain responsible for checkout HTML, maps, CSP rules, antiforgery, and
 cart ownership checks.
 
+### Public pickup locations
+
+The Umbraco adapters expose a public read-only endpoint for checkout UIs:
+
+```http
+GET /ekom/shipping/providers/{providerKey}/pickup-locations?storeAlias=main&countryCode=IS&postalCode=101
+```
+
+`providerKey` is the key of the Ekom shipping provider node. The endpoint uses
+the carrier, account, and service configured on that node and returns normalized
+location IDs, names, addresses, postal codes, cities, and coordinates. A valid
+provider with no matching locations returns an empty JSON array.
+
+Dropp location data uses its configured cache duration, which defaults to six
+hours. Icelandic Post postboxes, parcel points, and post offices default to a
+three-hour cache. The selected location is still validated with the carrier
+when checkout saves it. Production sites should include this public endpoint in
+their normal ASP.NET Core or edge rate-limiting policy.
+
 ## Fulfillment
 
 `IShippingFulfillmentService` is the recommended Ekom-level API:

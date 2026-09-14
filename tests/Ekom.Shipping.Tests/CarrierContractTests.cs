@@ -86,6 +86,24 @@ public sealed class CarrierContractTests
     }
 
     [Fact]
+    public async Task Dropp_CoalescesConcurrentLocationCacheMisses()
+    {
+        var handler = new DelayedCountingHandler("""
+            {"locations":[{"id":"loc-1","name":"Locker","address":"Street 1","addressObject":{"zip":101,"town":"Reykjavík"}}]}
+            """);
+        var carrier = BuildDroppCarrier(handler);
+
+        var requests = Enumerable.Range(0, 5).Select(_ => carrier.GetPickupLocationsAsync(
+            "main",
+            DroppShippingDefaults.PickupServiceId,
+            new ShippingLookupRequest("store", "IS")));
+        var results = await Task.WhenAll(requests);
+
+        Assert.All(results, result => Assert.Single(result));
+        Assert.Equal(1, handler.CallCount);
+    }
+
+    [Fact]
     public async Task Dropp_TreatsServerErrorAfterSubmissionAsOutcomeUnknown()
     {
         var carrier = BuildDroppCarrier(new StatusHandler(HttpStatusCode.ServiceUnavailable));
@@ -316,6 +334,22 @@ public sealed class CarrierContractTests
         Assert.Equal(
             "https://post.test/api/wscm/v1/parcelpoints?postcode=101&maxResults=5",
             handler.Requests[0].Uri.AbsoluteUri);
+    }
+
+    [Fact]
+    public async Task IcelandicPost_CachesPostOffices()
+    {
+        var handler = new DelayedCountingHandler("""
+            {"postOffices":[{"postOfficeId":"PO1","name":"Pósthús","address":"Street 1","postcode":"101","town":"Reykjavík"}]}
+            """);
+        var carrier = BuildIcelandicPostCarrier(handler);
+
+        var requests = Enumerable.Range(0, 5).Select(_ => carrier.GetPostOfficesAsync("main"));
+        var results = await Task.WhenAll(requests);
+
+        Assert.All(results, result => Assert.Equal("PO1", Assert.Single(result).Id));
+        Assert.Equal(1, handler.CallCount);
+        Assert.Equal("https://post.test/api/wscm/v1/postoffices", handler.RequestUri?.AbsoluteUri);
     }
 
     [Fact]
@@ -594,6 +628,27 @@ public sealed class CarrierContractTests
             {
                 Content = new StringContent(_responseJson, Encoding.UTF8, "application/json"),
             });
+        }
+    }
+
+    private sealed class DelayedCountingHandler(string responseJson) : HttpMessageHandler
+    {
+        private int _callCount;
+
+        public int CallCount => _callCount;
+        public Uri? RequestUri { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref _callCount);
+            RequestUri = request.RequestUri;
+            await Task.Delay(25, cancellationToken);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(responseJson, Encoding.UTF8, "application/json"),
+            };
         }
     }
 

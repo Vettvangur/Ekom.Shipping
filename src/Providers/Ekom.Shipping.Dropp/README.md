@@ -66,6 +66,18 @@ Set these properties on the Ekom shipping provider node:
 `FulfillmentMode` defaults to `Manual`. Set it to `Automatic` to create a
 shipment during `CheckoutEvents.CompleteCheckoutAsync`.
 
+## Public pickup locations
+
+With an `Ekom.Shipping.U*` adapter installed, checkout UIs can load the
+configured provider's cached Dropp locations without a custom controller:
+
+```http
+GET /ekom/shipping/providers/{providerKey}/pickup-locations?storeAlias=main&countryCode=IS&postalCode=101
+```
+
+`providerKey` is the Ekom shipping provider node key. Dropp locations use the
+account's `CacheDuration`, which defaults to six hours.
+
 ## Supported API operations
 
 Inject `IDroppShippingService` for direct access:

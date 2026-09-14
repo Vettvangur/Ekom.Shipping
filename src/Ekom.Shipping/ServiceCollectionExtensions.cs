@@ -11,6 +11,7 @@ public static class EkomServiceCollectionExtensions
     {
         services.AddEkomShippingCore();
         services.AddScoped<IEkomShippingCheckoutService, EkomShippingCheckoutService>();
+        services.AddScoped<IEkomPickupLocationQueryService, EkomPickupLocationQueryService>();
         services.TryAddScoped<IShippingOrderMapper, ShippingOrderMapper>();
         services.AddScoped<IShippingFulfillmentService, ShippingFulfillmentService>();
         services.AddTransient<IOrderManagerActionProvider, ShippingOrderManagerActionProvider>();

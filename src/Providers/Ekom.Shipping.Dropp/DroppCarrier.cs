@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -19,6 +20,7 @@ internal sealed class DroppCarrier : IDroppShippingService
     private readonly IMemoryCache _cache;
     private readonly ILogger<DroppCarrier> _logger;
     private readonly DroppOptions _options;
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _cacheLocks = new(StringComparer.Ordinal);
 
     public DroppCarrier(
         IHttpClientFactory httpClientFactory,
@@ -85,15 +87,11 @@ internal sealed class DroppCarrier : IDroppShippingService
 
         var account = GetAccount(accountReference);
         var cacheKey = $"ekom-shipping:dropp:{accountReference}:locations";
-        if (_cache.TryGetValue(cacheKey, out IReadOnlyList<PickupLocation>? cached) && cached is not null)
-        {
-            return cached;
-        }
-
-        var locations = await FetchLocationsAsync(accountReference, account, cancellationToken)
-            .ConfigureAwait(false);
-        _cache.Set(cacheKey, locations, account.CacheDuration);
-        return locations;
+        return await GetOrCreateCachedAsync(
+            cacheKey,
+            account.CacheDuration,
+            ct => FetchLocationsAsync(accountReference, account, ct),
+            cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<string?> ReserveBookingReferenceAsync(
@@ -122,21 +120,21 @@ internal sealed class DroppCarrier : IDroppShippingService
     {
         var account = GetAccount(accountReference);
         var cacheKey = $"ekom-shipping:dropp:{accountReference}:delivery-postal-codes";
-        if (_cache.TryGetValue(cacheKey, out DroppDeliveryPostalCodes? cached) && cached is not null)
-        {
-            return cached;
-        }
-
-        using var request = CreateRequest(account, HttpMethod.Get, "dropp/location/deliveryzips");
-        using var response = await SendAsync(request, cancellationToken).ConfigureAwait(false);
-        EnsureSuccess(response, accountReference, "delivery postal-code lookup");
-        var result = await ReadJsonAsync<DroppDeliveryPostalCodes>(response, cancellationToken)
-            .ConfigureAwait(false)
-            ?? throw new ShippingProviderException(
-                DroppShippingDefaults.CarrierAlias,
-                "Dropp returned no delivery postal codes.");
-        _cache.Set(cacheKey, result, account.CacheDuration);
-        return result;
+        return await GetOrCreateCachedAsync(
+            cacheKey,
+            account.CacheDuration,
+            async ct =>
+            {
+                using var request = CreateRequest(account, HttpMethod.Get, "dropp/location/deliveryzips");
+                using var response = await SendAsync(request, ct).ConfigureAwait(false);
+                EnsureSuccess(response, accountReference, "delivery postal-code lookup");
+                return await ReadJsonAsync<DroppDeliveryPostalCodes>(response, ct)
+                    .ConfigureAwait(false)
+                    ?? throw new ShippingProviderException(
+                        DroppShippingDefaults.CarrierAlias,
+                        "Dropp returned no delivery postal codes.");
+            },
+            cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<DroppOrder> CreateOrderAsync(
@@ -566,6 +564,37 @@ internal sealed class DroppCarrier : IDroppShippingService
                 x.AddressObject?.Town ?? string.Empty,
                 ExternalId: x.ExternalLocationId))
             .ToArray();
+    }
+
+    private async Task<T> GetOrCreateCachedAsync<T>(
+        string cacheKey,
+        TimeSpan cacheDuration,
+        Func<CancellationToken, Task<T>> factory,
+        CancellationToken cancellationToken)
+        where T : class
+    {
+        if (_cache.TryGetValue(cacheKey, out T? cached) && cached is not null)
+        {
+            return cached;
+        }
+
+        var cacheLock = _cacheLocks.GetOrAdd(cacheKey, static _ => new SemaphoreSlim(1, 1));
+        await cacheLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_cache.TryGetValue(cacheKey, out cached) && cached is not null)
+            {
+                return cached;
+            }
+
+            var result = await factory(cancellationToken).ConfigureAwait(false);
+            _cache.Set(cacheKey, result, cacheDuration);
+            return result;
+        }
+        finally
+        {
+            cacheLock.Release();
+        }
     }
 
     private DroppAccountOptions GetAccount(string accountReference)
