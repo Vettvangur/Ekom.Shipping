@@ -53,8 +53,15 @@ keep it in application configuration.
 }
 ```
 
-Set the Ekom shipping provider properties to carrier alias `dropp`, the
-configured account name, and service `pickup` or `home-delivery`.
+### Umbraco provider node
+
+Set these properties on the Ekom shipping provider node:
+
+| Property | Value |
+|---|---|
+| `shippingCarrierAlias` | `dropp` |
+| `shippingCarrierAccount` | The configured account name, for example `dropp-main` |
+| `shippingCarrierService` | `pickup` or `home-delivery` |
 
 `FulfillmentMode` defaults to `Manual`. Set it to `Automatic` to create a
 shipment during `CheckoutEvents.CompleteCheckoutAsync`.

@@ -45,6 +45,16 @@ is `https://express.api.dhl.com/mydhlapi/`; the test URL is
 }
 ```
 
+### Umbraco provider node
+
+Set these properties on the Ekom shipping provider node:
+
+| Property | Value |
+|---|---|
+| `shippingCarrierAlias` | `dhl-express` |
+| `shippingCarrierAccount` | The configured account name, for example `dhl-main` |
+| `shippingCarrierService` | The account's `ProductCode`, for example `P` |
+
 Register with `services.AddDhlExpressShipping(configuration)`. Credentials use
 pre-emptive HTTP Basic authentication and the configured version is sent in the
 required `x-version` header.
