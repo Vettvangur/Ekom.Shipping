@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <PackageId>Ekom.Shipping.Dropp</PackageId>
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
     <Description>Dropp checkout and fulfillment provider for Ekom Shipping.</Description>
   </PropertyGroup>
   <ItemGroup>
