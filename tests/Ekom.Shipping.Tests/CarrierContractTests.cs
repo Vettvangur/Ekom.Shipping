@@ -377,6 +377,23 @@ public sealed class CarrierContractTests
     }
 
     [Fact]
+    public async Task IcelandicPost_BooksShipmentWithNumericParcelLineNumber()
+    {
+        var handler = new SequenceHandler("""
+            {"shipmentId":"CF083141763IS","items":[{"lineNumber":1}]}
+            """);
+        var carrier = BuildIcelandicPostCarrier(handler);
+
+        var shipment = await carrier.CreateShipmentAsync(
+            "main",
+            new IcelandicPostShipmentRequest(
+                new IcelandicPostRecipient("Customer", "Street 1", "101", "IS"),
+                new IcelandicPostShipmentOptions { DeliveryServiceId = "DPH" }));
+
+        Assert.Equal("1", Assert.Single(shipment.Items).LineNumber);
+    }
+
+    [Fact]
     public async Task IcelandicPost_GetsDeletesAndDownloadsShipment()
     {
         var handler = new SequenceHandler(
@@ -395,6 +412,19 @@ public sealed class CarrierContractTests
         Assert.Equal("application/pdf", handler.Requests[1].Accept);
         Assert.Contains("labelSize=Unknown", handler.Requests[1].Uri.Query);
         Assert.Equal(HttpMethod.Delete, handler.Requests[2].Method);
+    }
+
+    [Fact]
+    public async Task IcelandicPost_GetsShipmentWithNumericParcelLineNumber()
+    {
+        var handler = new SequenceHandler("""
+            {"shipmentId":"CF083141763IS","items":[{"lineNumber":1}]}
+            """);
+        var carrier = BuildIcelandicPostCarrier(handler);
+
+        var shipment = await carrier.GetShipmentAsync("main", "CF083141763IS");
+
+        Assert.Equal("1", Assert.Single(shipment.Items).LineNumber);
     }
 
     [Fact]
@@ -462,6 +492,7 @@ public sealed class CarrierContractTests
                     PddpShipment = true,
                     ExportCustomsDeclaration = true,
                 },
+                Items: [new IcelandicPostParcel(LineNumber: "1")],
                 Contents: [new IcelandicPostCustomsContent(1, "Book", "1", "100.50", "DKK", "490199", "IS")],
                 Customs: new IcelandicPostCustoms(TotalTax: "25.00", Currency: "DKK")));
 
@@ -469,6 +500,7 @@ public sealed class CarrierContractTests
         var root = document.RootElement;
         Assert.True(root.GetProperty("options").GetProperty("cod").GetBoolean());
         Assert.True(root.GetProperty("options").GetProperty("exportCustomsDeclaration").GetBoolean());
+        Assert.Equal("1", root.GetProperty("items")[0].GetProperty("lineNumber").GetString());
         Assert.Equal("490199", root.GetProperty("contents")[0].GetProperty("hsTariffNumber").GetString());
         Assert.Equal("25.00", root.GetProperty("customs").GetProperty("totalTax").GetString());
     }

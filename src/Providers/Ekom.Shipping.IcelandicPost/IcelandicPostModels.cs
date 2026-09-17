@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -139,6 +140,7 @@ public sealed class IcelandicPostShipmentOptions
 }
 
 public sealed record IcelandicPostParcel(
+    [property: JsonConverter(typeof(IcelandicPostParcelLineNumberConverter))]
     string? LineNumber = null,
     string? ItemId = null,
     string? Weight = null,
@@ -148,6 +150,20 @@ public sealed record IcelandicPostParcel(
     string? Volume = null,
     string? ExternalItemId = null,
     string? InstructionCodes = null);
+
+internal sealed class IcelandicPostParcelLineNumberConverter : JsonConverter<string?>
+{
+    public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+        reader.TokenType switch
+        {
+            JsonTokenType.String => reader.GetString(),
+            JsonTokenType.Number => reader.GetDecimal().ToString(CultureInfo.InvariantCulture),
+            _ => throw new JsonException("Parcel line number must be a string or number."),
+        };
+
+    public override void Write(Utf8JsonWriter writer, string? value, JsonSerializerOptions options) =>
+        writer.WriteStringValue(value);
+}
 
 public sealed record IcelandicPostCustomsContent(
     int LineNumber,
