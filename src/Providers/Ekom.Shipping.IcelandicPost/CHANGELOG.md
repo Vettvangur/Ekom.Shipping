@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.3](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping.IcelandicPost-v0.1.2...Ekom.Shipping.IcelandicPost-v0.1.3) (2026-09-17)
+
+
+### Bug Fixes
+
+* **icelandic-post:** accept numeric parcel line numbers ([bf19541](https://github.com/Vettvangur/Ekom.Shipping/commit/bf195416f960c5bc63959d0f7496b15556368bd4))
+* **icelandic-post:** accept numeric parcel line numbers ([c327bd0](https://github.com/Vettvangur/Ekom.Shipping/commit/c327bd0e2c16a78974a3680a6d460d4d14a58bb5))
+
 ## [0.1.2](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping.IcelandicPost-v0.1.1...Ekom.Shipping.IcelandicPost-v0.1.2) (2026-09-14)
 
 
