@@ -5,6 +5,7 @@ using Ekom.Shipping.Dropp;
 using Ekom.Shipping.IcelandicPost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Ekom.Shipping.Tests;
 
@@ -549,6 +550,47 @@ public sealed class CarrierContractTests
     }
 
     [Fact]
+    public async Task IcelandicPost_LogsRedactedBodiesForFailedMutation()
+    {
+        var loggerProvider = new CapturingLoggerProvider();
+        var carrier = BuildIcelandicPostCarrier(
+            new ResponseSequenceHandler((
+                HttpStatusCode.BadRequest,
+                """{"errorText":"Birgir Örn Jónsson at Flókagata 57 has invalid kennitala 080184-2129."}""")),
+            loggerProvider: loggerProvider);
+
+        await Assert.ThrowsAsync<ShippingProviderException>(() => carrier.CreateShipmentAsync(
+            "main",
+            new IcelandicPostShipmentRequest(
+                new IcelandicPostRecipient(
+                    "Birgir Örn Jónsson",
+                    "Flókagata 57",
+                    "105",
+                    "IS",
+                    "Reykjavík",
+                    "birgirorn@gmail.com",
+                    "6617040",
+                    "080184-2129"),
+                new IcelandicPostShipmentOptions
+                {
+                    DeliveryServiceId = "DPH",
+                    Reference = "ORDER-1",
+                })));
+
+        var message = Assert.Single(loggerProvider.Messages);
+        Assert.Contains("\"deliveryServiceId\":\"DPH\"", message);
+        Assert.Contains("errorText", message);
+        Assert.DoesNotContain("Birgir Örn Jónsson", message);
+        Assert.DoesNotContain("Flókagata 57", message);
+        Assert.DoesNotContain("105", message);
+        Assert.DoesNotContain("birgirorn@gmail.com", message);
+        Assert.DoesNotContain("6617040", message);
+        Assert.DoesNotContain("080184-2129", message);
+        Assert.DoesNotContain("ORDER-1", message);
+        Assert.DoesNotContain("secret", message);
+    }
+
+    [Fact]
     public async Task IcelandicPost_RejectsUnexpectedLabelContentType()
     {
         var carrier = BuildIcelandicPostCarrier(new RecordingHandler("not a PDF"));
@@ -584,7 +626,8 @@ public sealed class CarrierContractTests
 
     private static IIcelandicPostShippingService BuildIcelandicPostCarrier(
         HttpMessageHandler handler,
-        string? fulfillmentMode = null)
+        string? fulfillmentMode = null,
+        ILoggerProvider? loggerProvider = null)
     {
         var configuration = new Dictionary<string, string?>
         {
@@ -597,7 +640,14 @@ public sealed class CarrierContractTests
         }
 
         var services = new ServiceCollection();
-        services.AddLogging();
+        services.AddLogging(builder =>
+        {
+            if (loggerProvider is not null)
+            {
+                builder.SetMinimumLevel(LogLevel.Debug);
+                builder.AddProvider(loggerProvider);
+            }
+        });
         services.AddIcelandicPostShipping(BuildConfiguration(configuration));
         services.AddSingleton<IHttpClientFactory>(new TestHttpClientFactory(handler));
         return services.BuildServiceProvider().GetRequiredService<IIcelandicPostShippingService>();
@@ -744,6 +794,35 @@ public sealed class CarrierContractTests
             HttpRequestMessage request,
             CancellationToken cancellationToken) =>
             Task.FromResult(new HttpResponseMessage(statusCode));
+    }
+
+    private sealed class CapturingLoggerProvider : ILoggerProvider
+    {
+        public List<string> Messages { get; } = [];
+
+        public ILogger CreateLogger(string categoryName) => new CapturingLogger(Messages);
+
+        public void Dispose()
+        {
+        }
+    }
+
+    private sealed class CapturingLogger(List<string> messages) : ILogger
+    {
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Debug;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            messages.Add(formatter(state, exception));
+        }
     }
 
     private sealed record RecordedRequest(HttpMethod Method, Uri Uri, string? Content, string? Accept);
