@@ -245,7 +245,7 @@ internal sealed class IcelandicPostCarrier : IIcelandicPostShippingService
                     pickupLocation?.City ?? request.Recipient.City,
                     request.Recipient.Email,
                     request.Recipient.Phone,
-                    request.Recipient.NationalId),
+                    Nin: null),
                 new IcelandicPostShipmentOptions
                 {
                     DeliveryServiceId = request.ServiceId,
