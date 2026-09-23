@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.6](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping.IcelandicPost-v0.1.5...Ekom.Shipping.IcelandicPost-v0.1.6) (2026-09-23)
+
+
+### Bug Fixes
+
+* **icelandic-post:** omit NIN from Ekom bookings ([3a3454e](https://github.com/Vettvangur/Ekom.Shipping/commit/3a3454ee678e1ed27842e0db845081eab749588b))
+* **icelandic-post:** omit NIN from Ekom bookings ([8988102](https://github.com/Vettvangur/Ekom.Shipping/commit/8988102e216dc9c9889287e6b7a5f7397fe09515))
+
 ## [0.1.5](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping.IcelandicPost-v0.1.4...Ekom.Shipping.IcelandicPost-v0.1.5) (2026-09-23)
 
 
