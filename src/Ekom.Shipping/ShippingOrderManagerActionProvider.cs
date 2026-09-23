@@ -26,10 +26,16 @@ internal sealed class ShippingOrderManagerActionProvider : IOrderManagerActionPr
         IOrderInfo orderInfo,
         CancellationToken ct = default)
     {
+        var shippingProvider = orderInfo.ShippingProvider;
+        if (shippingProvider is null)
+        {
+            return Array.Empty<OrderManagerAction>();
+        }
+
         var record = await _fulfillment.GetAsync(orderInfo.UniqueId, ct).ConfigureAwait(false);
         var configuration = EkomShippingMethodConfiguration.FromProperties(
-                orderInfo.ShippingProvider.Key,
-                orderInfo.ShippingProvider.Properties);
+                shippingProvider.Key,
+                shippingProvider.Properties);
         var carrierAlias = record?.CarrierAlias ?? configuration?.CarrierAlias;
         var carrier = _carriers.Carriers.FirstOrDefault(x =>
             string.Equals(x.Alias, carrierAlias, StringComparison.OrdinalIgnoreCase));
