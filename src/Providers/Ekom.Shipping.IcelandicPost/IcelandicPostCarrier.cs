@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Caching.Memory;
@@ -15,6 +16,29 @@ internal sealed class IcelandicPostCarrier : IIcelandicPostShippingService
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
+
+    private static readonly HashSet<string> SensitiveDiagnosticProperties = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "addressLine1",
+        "addressLine2",
+        "attention",
+        "codAmount",
+        "description",
+        "descriptionOfContents",
+        "email",
+        "externalShipmentId",
+        "insuranceAmount",
+        "instructionsForNonDelivery",
+        "iossNumber",
+        "mobilePhone",
+        "name",
+        "nin",
+        "postcode",
+        "reference",
+        "town",
+    };
+
+    private const int MaxDiagnosticBodyBytes = 32 * 1024;
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IMemoryCache _cache;
@@ -662,6 +686,7 @@ internal sealed class IcelandicPostCarrier : IIcelandicPostShippingService
         }
 
         var statusCode = (int)response.StatusCode;
+        await LogFailedMutationDiagnosticsAsync(request, response, accountReference, operation, statusCode).ConfigureAwait(false);
         response.Dispose();
         if (statusCode is >= 400 and < 500 && statusCode is not 408 and not 409 and not 429)
         {
@@ -676,6 +701,160 @@ internal sealed class IcelandicPostCarrier : IIcelandicPostShippingService
         throw new ShipmentOutcomeUnknownException(
             $"Íslandspóstur {operation} returned HTTP status {statusCode}; its outcome is uncertain.",
             new HttpRequestException($"Íslandspóstur returned HTTP status {statusCode}."));
+    }
+
+    private async Task LogFailedMutationDiagnosticsAsync(
+        HttpRequestMessage request,
+        HttpResponseMessage response,
+        string accountReference,
+        string operation,
+        int statusCode)
+    {
+        if (!_logger.IsEnabled(LogLevel.Debug))
+        {
+            return;
+        }
+
+        try
+        {
+            var sensitiveValues = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var requestBody = RedactDiagnosticBody(
+                await ReadDiagnosticBodyAsync(request.Content).ConfigureAwait(false),
+                sensitiveValues);
+            var responseBody = RedactDiagnosticBody(
+                await ReadDiagnosticBodyAsync(response.Content).ConfigureAwait(false),
+                sensitiveValues);
+            _logger.LogDebug(
+                "Íslandspóstur {Operation} failed for account {AccountReference} at {Method} {Path} with status {StatusCode}. Request body: {RequestBody}. Response body: {ResponseBody}",
+                operation,
+                accountReference,
+                request.Method,
+                request.RequestUri?.AbsolutePath,
+                statusCode,
+                requestBody,
+                responseBody);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogDebug(
+                exception,
+                "Íslandspóstur {Operation} failed for account {AccountReference} with status {StatusCode}; diagnostic body capture failed.",
+                operation,
+                accountReference,
+                statusCode);
+        }
+    }
+
+    private static async Task<string> ReadDiagnosticBodyAsync(HttpContent? content)
+    {
+        if (content is null)
+        {
+            return "[none]";
+        }
+
+        if (content.Headers.ContentLength is > MaxDiagnosticBodyBytes)
+        {
+            return $"[omitted: body exceeds {MaxDiagnosticBodyBytes} bytes]";
+        }
+
+        using var stream = await content.ReadAsStreamAsync(CancellationToken.None).ConfigureAwait(false);
+        using var buffer = new MemoryStream();
+        var bytes = new byte[4096];
+        while (true)
+        {
+            var count = await stream.ReadAsync(bytes.AsMemory(), CancellationToken.None).ConfigureAwait(false);
+            if (count == 0)
+            {
+                return Encoding.UTF8.GetString(buffer.GetBuffer(), 0, (int)buffer.Length);
+            }
+
+            if (buffer.Length + count > MaxDiagnosticBodyBytes)
+            {
+                return $"[omitted: body exceeds {MaxDiagnosticBodyBytes} bytes]";
+            }
+
+            buffer.Write(bytes, 0, count);
+        }
+    }
+
+    private static string RedactDiagnosticBody(string body, ISet<string> sensitiveValues)
+    {
+        if (body is "[none]" || body.StartsWith("[omitted:", StringComparison.Ordinal))
+        {
+            return body;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            using var buffer = new MemoryStream();
+            using var writer = new Utf8JsonWriter(buffer);
+            WriteRedactedJson(document.RootElement, writer, sensitiveValues);
+            writer.Flush();
+            return Encoding.UTF8.GetString(buffer.GetBuffer(), 0, (int)buffer.Length);
+        }
+        catch (JsonException)
+        {
+            return RedactKnownValues(body, sensitiveValues);
+        }
+    }
+
+    private static void WriteRedactedJson(JsonElement element, Utf8JsonWriter writer, ISet<string> sensitiveValues)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                writer.WriteStartObject();
+                foreach (var property in element.EnumerateObject())
+                {
+                    writer.WritePropertyName(property.Name);
+                    if (SensitiveDiagnosticProperties.Contains(property.Name))
+                    {
+                        CollectStringValues(property.Value, sensitiveValues);
+                        writer.WriteStringValue("[REDACTED]");
+                    }
+                    else
+                    {
+                        WriteRedactedJson(property.Value, writer, sensitiveValues);
+                    }
+                }
+
+                writer.WriteEndObject();
+                break;
+            case JsonValueKind.Array:
+                writer.WriteStartArray();
+                foreach (var item in element.EnumerateArray())
+                {
+                    WriteRedactedJson(item, writer, sensitiveValues);
+                }
+
+                writer.WriteEndArray();
+                break;
+            case JsonValueKind.String:
+                writer.WriteStringValue(RedactKnownValues(element.GetString()!, sensitiveValues));
+                break;
+            default:
+                element.WriteTo(writer);
+                break;
+        }
+    }
+
+    private static void CollectStringValues(JsonElement element, ISet<string> sensitiveValues)
+    {
+        if (element.ValueKind == JsonValueKind.String && !string.IsNullOrEmpty(element.GetString()))
+        {
+            sensitiveValues.Add(element.GetString()!);
+        }
+    }
+
+    private static string RedactKnownValues(string value, ISet<string> sensitiveValues)
+    {
+        foreach (var sensitiveValue in sensitiveValues.OrderByDescending(x => x.Length))
+        {
+            value = value.Replace(sensitiveValue, "[REDACTED]", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return value;
     }
 
     private async Task<HttpResponseMessage> SendAsync(
