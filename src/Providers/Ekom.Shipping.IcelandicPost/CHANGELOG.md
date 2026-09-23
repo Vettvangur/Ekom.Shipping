@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.4](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping.IcelandicPost-v0.1.3...Ekom.Shipping.IcelandicPost-v0.1.4) (2026-09-23)
+
+
+### Bug Fixes
+
+* **icelandic-post:** support generic pickup services ([3a36cc9](https://github.com/Vettvangur/Ekom.Shipping/commit/3a36cc9a59c6325180d2e0883239bf885e9bb01e))
+* **icelandic-post:** support generic pickup services ([6f9425e](https://github.com/Vettvangur/Ekom.Shipping/commit/6f9425e34bcc7da7299a587c452a01ac30baedd2))
+
 ## [0.1.3](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping.IcelandicPost-v0.1.2...Ekom.Shipping.IcelandicPost-v0.1.3) (2026-09-17)
 
 
