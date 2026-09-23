@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.3](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping-v0.1.2...Ekom.Shipping-v0.1.3) (2026-09-23)
+
+
+### Bug Fixes
+
+* **shipping:** handle orders without a provider ([465a7e9](https://github.com/Vettvangur/Ekom.Shipping/commit/465a7e9930fba3449f76a8fa83756f73dc209dd5))
+* **shipping:** handle orders without a provider ([7efecd8](https://github.com/Vettvangur/Ekom.Shipping/commit/7efecd8c757b08e91601df1500a29deaebd5a092))
+
 ## [0.1.2](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping-v0.1.1...Ekom.Shipping-v0.1.2) (2026-09-14)
 
 
