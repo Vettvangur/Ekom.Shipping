@@ -12,6 +12,13 @@ public sealed record ShipmentRecipient(
 
 public sealed record ShipmentItem(string Sku, string Name, int Quantity);
 
+public sealed record ShipmentPickupLocation(
+    string Id,
+    string Name,
+    string Address,
+    string PostalCode,
+    string City);
+
 public sealed record ShipmentBookingRequest(
     string MerchantOrderId,
     string ServiceId,
@@ -20,7 +27,8 @@ public sealed record ShipmentBookingRequest(
     decimal Value,
     string Currency,
     string? PickupLocationId = null,
-    string? BookingReference = null);
+    string? BookingReference = null,
+    ShipmentPickupLocation? PickupLocation = null);
 
 public sealed record ShipmentBookingResult(
     string ShipmentId,

@@ -192,10 +192,17 @@ internal sealed class IcelandicPostCarrier : IIcelandicPostShippingService
                 "Built-in Íslandspóstur fulfillment supports domestic shipments only. Use IIcelandicPostShippingService for international shipments.");
         }
 
-        if (RequiresPickupSelection(request.ServiceId))
+        var pickupLocation = RequiresPickupSelection(request.ServiceId)
+            ? request.PickupLocation
+            : null;
+        if (RequiresPickupSelection(request.ServiceId) &&
+            (pickupLocation is null ||
+             string.IsNullOrWhiteSpace(pickupLocation.Address) ||
+             string.IsNullOrWhiteSpace(pickupLocation.PostalCode) ||
+             string.IsNullOrWhiteSpace(pickupLocation.City)))
         {
             throw new InvalidShippingSelectionException(
-                $"Íslandspóstur service '{request.ServiceId}' requires a carrier-qualified service ID for fulfillment.");
+                $"Íslandspóstur service '{request.ServiceId}' requires a complete pickup location.");
         }
 
         if (request.MerchantOrderId.Length > 30)
@@ -208,10 +215,10 @@ internal sealed class IcelandicPostCarrier : IIcelandicPostShippingService
             new IcelandicPostShipmentRequest(
                 new IcelandicPostRecipient(
                     request.Recipient.Name,
-                    request.Recipient.Address,
-                    request.Recipient.PostalCode,
+                    pickupLocation?.Address ?? request.Recipient.Address,
+                    pickupLocation?.PostalCode ?? request.Recipient.PostalCode,
                     "IS",
-                    request.Recipient.City,
+                    pickupLocation?.City ?? request.Recipient.City,
                     request.Recipient.Email,
                     request.Recipient.Phone,
                     request.Recipient.NationalId),

@@ -17,6 +17,14 @@ internal sealed class ShippingOrderMapper : IShippingOrderMapper
             order,
             EkomShippingPropertyAliases.CustomPickupLocationId,
             "customshippingDroppLocationId");
+        var pickupLocation = pickupLocationId is null
+            ? null
+            : new ShipmentPickupLocation(
+                pickupLocationId,
+                GetCustomValue(order, EkomShippingPropertyAliases.CustomPickupLocationName) ?? string.Empty,
+                GetCustomValue(order, EkomShippingPropertyAliases.CustomPickupLocationAddress) ?? string.Empty,
+                GetCustomValue(order, EkomShippingPropertyAliases.CustomPickupLocationPostalCode) ?? string.Empty,
+                GetCustomValue(order, EkomShippingPropertyAliases.CustomPickupLocationCity) ?? string.Empty);
 
         return new ShipmentBookingRequest(
             order.OrderNumber,
@@ -34,7 +42,8 @@ internal sealed class ShippingOrderMapper : IShippingOrderMapper
             order.OrderLineTotal.Value,
             order.StoreInfo.Currency.ISOCurrencySymbol,
             pickupLocationId,
-            bookingReference);
+            bookingReference,
+            pickupLocation);
     }
 
     private static IReadOnlyList<ShipmentItem> MapItems(IOrderInfo order)
