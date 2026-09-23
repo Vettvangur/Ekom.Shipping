@@ -364,7 +364,7 @@ public sealed class CarrierContractTests
             new ShipmentBookingRequest(
                 "ORDER-1",
                 "DPH",
-                new ShipmentRecipient("Customer", "customer@example.test", "5551234", "Street 1", "101", "Reykjavík", "IS"),
+                new ShipmentRecipient("Customer", "customer@example.test", "+354 661 7040", "Street 1", "101", "Reykjavík", "IS", "080184-2129"),
                 [new ShipmentItem("SKU1", "Product", 2)],
                 1200m,
                 "ISK"));
@@ -373,9 +373,38 @@ public sealed class CarrierContractTests
         Assert.Equal(HttpMethod.Post, handler.Requests[0].Method);
         using var document = JsonDocument.Parse(handler.Requests[0].Content!);
         Assert.Equal("DPH", document.RootElement.GetProperty("options").GetProperty("deliveryServiceId").GetString());
-        Assert.Equal(1, document.RootElement.GetProperty("options").GetProperty("numberOfItems").GetInt32());
         Assert.False(document.RootElement.GetProperty("recipient").TryGetProperty("nin", out _));
+        Assert.Equal("6617040", document.RootElement.GetProperty("recipient").GetProperty("mobilePhone").GetString());
+        Assert.False(document.RootElement.GetProperty("options").TryGetProperty("reference", out _));
+        Assert.False(document.RootElement.GetProperty("options").TryGetProperty("numberOfItems", out _));
         Assert.False(document.RootElement.TryGetProperty("items", out _));
+    }
+
+    [Fact]
+    public async Task IcelandicPost_BooksPostboxShipmentWithPickupAddressAndCustomerTown()
+    {
+        var handler = new SequenceHandler("""{"shipmentId":"CF083141763IS"}""");
+        var carrier = BuildIcelandicPostCarrier(handler);
+
+        await ((IShippingFulfillmentCarrier)carrier).CreateShipmentAsync(
+            "main",
+            new ShipmentBookingRequest(
+                new string('O', 31),
+                "DPO",
+                new ShipmentRecipient("Customer", "customer@example.test", "00354 686 7395", "Brautarholt 20-408", "105", "Reykjavík", "IS"),
+                [new ShipmentItem("SKU1", "Product", 1)],
+                1200m,
+                "ISK",
+                PickupLocationId: "9598",
+                PickupLocation: new ShipmentPickupLocation("9598", "Póstbox", "Nóatúni 17", "105", string.Empty)));
+
+        using var document = JsonDocument.Parse(handler.Requests[0].Content!);
+        var recipient = document.RootElement.GetProperty("recipient");
+        Assert.Equal("Nóatúni 17", recipient.GetProperty("addressLine1").GetString());
+        Assert.Equal("105", recipient.GetProperty("postcode").GetString());
+        Assert.Equal("Reykjavík", recipient.GetProperty("town").GetString());
+        Assert.Equal("6867395", recipient.GetProperty("mobilePhone").GetString());
+        Assert.Equal("DPO", document.RootElement.GetProperty("options").GetProperty("deliveryServiceId").GetString());
     }
 
     [Fact]
