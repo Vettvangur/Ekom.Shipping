@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.7](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping.IcelandicPost-v0.1.6...Ekom.Shipping.IcelandicPost-v0.1.7) (2026-09-23)
+
+
+### Bug Fixes
+
+* **icelandic-post:** simplify Ekom booking payload ([8817d97](https://github.com/Vettvangur/Ekom.Shipping/commit/8817d97cf04ecc19a272df3645884abbf20804d3))
+* **icelandic-post:** simplify Ekom booking payload ([7e11353](https://github.com/Vettvangur/Ekom.Shipping/commit/7e11353a053dcc700aaa8e0d635b18f622f4369b))
+
 ## [0.1.6](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping.IcelandicPost-v0.1.5...Ekom.Shipping.IcelandicPost-v0.1.6) (2026-09-23)
 
 
