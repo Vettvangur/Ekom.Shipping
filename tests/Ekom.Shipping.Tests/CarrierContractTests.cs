@@ -38,7 +38,7 @@ public sealed class CarrierContractTests
             new ShipmentBookingRequest(
                 "ORDER-1",
                 DroppShippingDefaults.HomeDeliveryServiceId,
-                new ShipmentRecipient("Customer", "customer@example.test", "5551234", "Street 1", "101", "Reykjavík", "IS"),
+                new ShipmentRecipient("Customer", "customer@example.test", "5551234", "Street 1", "101", "Reykjavík", "IS", "080184-2129"),
                 [new ShipmentItem("SKU1", "Product", 2)],
                 1200m,
                 "ISK",
@@ -374,6 +374,7 @@ public sealed class CarrierContractTests
         using var document = JsonDocument.Parse(handler.Requests[0].Content!);
         Assert.Equal("DPH", document.RootElement.GetProperty("options").GetProperty("deliveryServiceId").GetString());
         Assert.Equal(1, document.RootElement.GetProperty("options").GetProperty("numberOfItems").GetInt32());
+        Assert.False(document.RootElement.GetProperty("recipient").TryGetProperty("nin", out _));
         Assert.False(document.RootElement.TryGetProperty("items", out _));
     }
 
