@@ -222,16 +222,10 @@ internal sealed class IcelandicPostCarrier : IIcelandicPostShippingService
         if (RequiresPickupSelection(request.ServiceId) &&
             (pickupLocation is null ||
              string.IsNullOrWhiteSpace(pickupLocation.Address) ||
-             string.IsNullOrWhiteSpace(pickupLocation.PostalCode) ||
-             string.IsNullOrWhiteSpace(pickupLocation.City)))
+             string.IsNullOrWhiteSpace(pickupLocation.PostalCode)))
         {
             throw new InvalidShippingSelectionException(
-                $"Íslandspóstur service '{request.ServiceId}' requires a complete pickup location.");
-        }
-
-        if (request.MerchantOrderId.Length > 30)
-        {
-            throw new ShippingException("Íslandspóstur shipment references cannot exceed 30 characters.");
+                $"Íslandspóstur service '{request.ServiceId}' requires a pickup location address and postal code.");
         }
 
         var shipment = await CreateShipmentAsync(
@@ -242,18 +236,33 @@ internal sealed class IcelandicPostCarrier : IIcelandicPostShippingService
                     pickupLocation?.Address ?? request.Recipient.Address,
                     pickupLocation?.PostalCode ?? request.Recipient.PostalCode,
                     "IS",
-                    pickupLocation?.City ?? request.Recipient.City,
+                    request.Recipient.City,
                     request.Recipient.Email,
-                    request.Recipient.Phone,
+                    NormalizeMobilePhone(request.Recipient.Phone),
                     Nin: null),
                 new IcelandicPostShipmentOptions
                 {
                     DeliveryServiceId = request.ServiceId,
-                    Reference = request.MerchantOrderId,
-                    NumberOfItems = 1,
                 }),
             cancellationToken).ConfigureAwait(false);
         return new ShipmentBookingResult(shipment.ShipmentId, request.MerchantOrderId, shipment.ShipmentId);
+    }
+
+    private static string NormalizeMobilePhone(string phone)
+    {
+        var normalized = phone.Replace(" ", string.Empty, StringComparison.Ordinal);
+        if (normalized.StartsWith("+354", StringComparison.Ordinal))
+        {
+            normalized = normalized[4..];
+        }
+        else if (normalized.StartsWith("00354", StringComparison.Ordinal))
+        {
+            normalized = normalized[5..];
+        }
+
+        return normalized.Length == 7 && normalized[0] is '6' or '7' or '8'
+            ? normalized
+            : string.Empty;
     }
 
     public async Task<IcelandicPostShipment> CreateShipmentAsync(
