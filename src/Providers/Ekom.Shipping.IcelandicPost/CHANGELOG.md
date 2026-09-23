@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.5](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping.IcelandicPost-v0.1.4...Ekom.Shipping.IcelandicPost-v0.1.5) (2026-09-23)
+
+
+### Bug Fixes
+
+* **icelandic-post:** log redacted failed mutations ([4dab2ff](https://github.com/Vettvangur/Ekom.Shipping/commit/4dab2ffe683298826f729ec14c505090cd092acc))
+* **icelandic-post:** log redacted failed mutations ([d3c50bd](https://github.com/Vettvangur/Ekom.Shipping/commit/d3c50bded039cce270e4c674bea90fd61644d2ab))
+
 ## [0.1.4](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping.IcelandicPost-v0.1.3...Ekom.Shipping.IcelandicPost-v0.1.4) (2026-09-23)
 
 
