@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.8](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping.IcelandicPost-v0.1.7...Ekom.Shipping.IcelandicPost-v0.1.8) (2026-10-02)
+
+
+### Bug Fixes
+
+* **icelandic-post:** truncate shipment fields to documented limits ([9b91b2b](https://github.com/Vettvangur/Ekom.Shipping/commit/9b91b2be91a8a38a2517ed1a79f6aa3ff76113f0))
+* **icelandic-post:** truncate shipment fields to documented limits ([824bd67](https://github.com/Vettvangur/Ekom.Shipping/commit/824bd67cbad2b9d23b4c6cd78160d19372be334b))
+
 ## [0.1.7](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping.IcelandicPost-v0.1.6...Ekom.Shipping.IcelandicPost-v0.1.7) (2026-09-23)
 
 
