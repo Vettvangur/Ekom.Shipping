@@ -91,8 +91,18 @@ public sealed record IcelandicPostRecipient(
 
 public sealed class IcelandicPostShipmentOptions
 {
+    private string? _reference;
+
     public string DeliveryServiceId { get; init; } = string.Empty;
-    public string? Reference { get; init; }
+    public string? Reference { get => _reference; init => _reference = value; }
+
+    internal IcelandicPostShipmentOptions WithReference(string? reference)
+    {
+        var copy = (IcelandicPostShipmentOptions)MemberwiseClone();
+        copy._reference = reference;
+        return copy;
+    }
+
     public int? NumberOfItems { get; init; }
     public int? NumberOfCertificates { get; init; }
     public int? NumberOfInvoices { get; init; }

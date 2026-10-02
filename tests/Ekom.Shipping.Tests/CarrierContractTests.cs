@@ -629,6 +629,165 @@ public sealed class CarrierContractTests
             carrier.GetLabelAsync("main", "CF083141763IS"));
     }
 
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(0)]
+    [InlineData(1)]
+    public async Task IcelandicPost_LimitsInternationalRecipientFieldsWithoutChangingRequest(int extraLength)
+    {
+        var handler = new SequenceHandler("""{"shipmentId":"CF083141763IS"}""");
+        var loggerProvider = new CapturingLoggerProvider();
+        var carrier = BuildIcelandicPostCarrier(handler, loggerProvider: loggerProvider);
+        var recipient = new IcelandicPostRecipient(
+            new string('N', 44 + extraLength),
+            new string('A', 35 + extraLength),
+            new string('P', 10 + extraLength),
+            "DK"[..Math.Min(2, 2 + extraLength)] + (extraLength > 0 ? "C" : string.Empty),
+            new string('T', 35 + extraLength),
+            "customer@example.test",
+            AddressLine2: new string('B', 35 + extraLength));
+        var request = new IcelandicPostShipmentRequest(
+            recipient,
+            new IcelandicPostShipmentOptions { DeliveryServiceId = "DPH" },
+            Contents: [new IcelandicPostCustomsContent(1, "Book", "1", "100", "DKK", "490199", "IS")]);
+
+        await carrier.CreateShipmentAsync("main", request);
+
+        using var document = JsonDocument.Parse(Assert.Single(handler.Requests).Content!);
+        var sent = document.RootElement.GetProperty("recipient");
+        var fields = new (string Field, string Value, int Limit)[]
+        {
+            ("name", recipient.Name, 44),
+            ("addressLine1", recipient.AddressLine1, 35),
+            ("addressLine2", recipient.AddressLine2!, 35),
+            ("town", recipient.Town!, 35),
+            ("postcode", recipient.Postcode, 10),
+            ("countryCode", recipient.CountryCode, 2),
+        };
+        foreach (var (field, value, limit) in fields)
+        {
+            Assert.Equal(value[..Math.Min(value.Length, limit)], sent.GetProperty(field).GetString());
+        }
+
+        Assert.Same(recipient, request.Recipient);
+        Assert.Equal(44 + extraLength, request.Recipient.Name.Length);
+        if (extraLength > 0)
+        {
+            Assert.Equal(fields.Length, loggerProvider.Messages.Count);
+            Assert.All(loggerProvider.Levels, level => Assert.Equal(LogLevel.Warning, level));
+            foreach (var (field, value, limit) in fields)
+            {
+                var warning = Assert.Single(loggerProvider.Messages, message => message.Contains($"field {field} "));
+                Assert.Contains($"maximum length of {limit}", warning);
+                Assert.Contains($"from {value.Length} characters", warning);
+                Assert.DoesNotContain(value, warning);
+            }
+        }
+        else
+        {
+            Assert.Empty(loggerProvider.Messages);
+        }
+    }
+
+    [Theory]
+    [InlineData("10")]
+    [InlineData("101")]
+    [InlineData("1010")]
+    public async Task IcelandicPost_LimitsDomesticPostcode(string postcode)
+    {
+        var handler = new SequenceHandler("""{"shipmentId":"CF083141763IS"}""");
+        var loggerProvider = new CapturingLoggerProvider();
+        var carrier = BuildIcelandicPostCarrier(handler, loggerProvider: loggerProvider);
+        var request = new IcelandicPostShipmentRequest(
+            new IcelandicPostRecipient("Customer", "Street 1", postcode, "is"),
+            new IcelandicPostShipmentOptions { DeliveryServiceId = "DPH" });
+
+        await carrier.CreateShipmentAsync("main", request);
+
+        using var document = JsonDocument.Parse(Assert.Single(handler.Requests).Content!);
+        var sent = document.RootElement.GetProperty("recipient");
+        Assert.Equal(postcode[..Math.Min(3, postcode.Length)], sent.GetProperty("postcode").GetString());
+        Assert.False(sent.TryGetProperty("addressLine2", out _));
+        Assert.False(sent.TryGetProperty("town", out _));
+        Assert.Equal(postcode, request.Recipient.Postcode);
+        Assert.Equal(postcode.Length > 3 ? 1 : 0, loggerProvider.Messages.Count);
+    }
+
+    [Theory]
+    [InlineData(29)]
+    [InlineData(30)]
+    [InlineData(31)]
+    public async Task IcelandicPost_LimitsReferenceWithoutChangingOtherOptions(int length)
+    {
+        var handler = new SequenceHandler("""{"shipmentId":"CF083141763IS"}""");
+        var loggerProvider = new CapturingLoggerProvider();
+        var carrier = BuildIcelandicPostCarrier(handler, loggerProvider: loggerProvider);
+        var options = new IcelandicPostShipmentOptions
+        {
+            DeliveryServiceId = "DPH",
+            Reference = new string('R', length),
+            NumberOfItems = 2,
+            Fragile = true,
+        };
+
+        await carrier.CreateShipmentAsync("main", new IcelandicPostShipmentRequest(
+            new IcelandicPostRecipient("Customer", "Street 1", "101", "IS"), options));
+
+        using var document = JsonDocument.Parse(Assert.Single(handler.Requests).Content!);
+        var sent = document.RootElement.GetProperty("options");
+        Assert.Equal(new string('R', Math.Min(length, 30)), sent.GetProperty("reference").GetString());
+        Assert.Equal("DPH", sent.GetProperty("deliveryServiceId").GetString());
+        Assert.Equal(2, sent.GetProperty("numberOfItems").GetInt32());
+        Assert.True(sent.GetProperty("fragile").GetBoolean());
+        Assert.Equal(length, options.Reference.Length);
+        if (length > 30)
+        {
+            var warning = Assert.Single(loggerProvider.Messages);
+            Assert.Equal(LogLevel.Warning, Assert.Single(loggerProvider.Levels));
+            Assert.Contains("options.reference", warning);
+            Assert.DoesNotContain(options.Reference, warning);
+        }
+        else
+        {
+            Assert.Empty(loggerProvider.Messages);
+        }
+    }
+
+    [Fact]
+    public async Task IcelandicPost_TruncatesEkomRecipientFields()
+    {
+        var handler = new SequenceHandler("""{"shipmentId":"CF083141763IS"}""");
+        var carrier = BuildIcelandicPostCarrier(handler);
+        var recipient = new ShipmentRecipient(
+            new string('N', 45), "customer@example.test", "6617040",
+            new string('A', 36), "101", new string('T', 36), "IS");
+
+        await ((IShippingFulfillmentCarrier)carrier).CreateShipmentAsync(
+            "main",
+            new ShipmentBookingRequest("ORDER-1", "DPH", recipient,
+                [new ShipmentItem("SKU1", "Product", 1)], 1200m, "ISK"));
+
+        using var document = JsonDocument.Parse(Assert.Single(handler.Requests).Content!);
+        var sent = document.RootElement.GetProperty("recipient");
+        Assert.Equal(new string('N', 44), sent.GetProperty("name").GetString());
+        Assert.Equal(new string('A', 35), sent.GetProperty("addressLine1").GetString());
+        Assert.Equal(new string('T', 35), sent.GetProperty("town").GetString());
+        Assert.Equal(45, recipient.Name.Length);
+    }
+
+    [Fact]
+    public async Task IcelandicPost_DoesNotSplitSurrogatePairWhenTruncatingName()
+    {
+        var handler = new SequenceHandler("""{"shipmentId":"CF083141763IS"}""");
+        var carrier = BuildIcelandicPostCarrier(handler);
+        await carrier.CreateShipmentAsync("main", new IcelandicPostShipmentRequest(
+            new IcelandicPostRecipient(new string('N', 43) + "😀", "Street 1", "101", "IS"),
+            new IcelandicPostShipmentOptions { DeliveryServiceId = "DPH" }));
+
+        using var document = JsonDocument.Parse(Assert.Single(handler.Requests).Content!);
+        Assert.Equal(new string('N', 43), document.RootElement.GetProperty("recipient").GetProperty("name").GetString());
+    }
+
     private static IConfiguration BuildConfiguration(Dictionary<string, string?> values) =>
         new ConfigurationBuilder().AddInMemoryCollection(values).Build();
 
@@ -829,15 +988,16 @@ public sealed class CarrierContractTests
     private sealed class CapturingLoggerProvider : ILoggerProvider
     {
         public List<string> Messages { get; } = [];
+        public List<LogLevel> Levels { get; } = [];
 
-        public ILogger CreateLogger(string categoryName) => new CapturingLogger(Messages);
+        public ILogger CreateLogger(string categoryName) => new CapturingLogger(Messages, Levels);
 
         public void Dispose()
         {
         }
     }
 
-    private sealed class CapturingLogger(List<string> messages) : ILogger
+    private sealed class CapturingLogger(List<string> messages, List<LogLevel> levels) : ILogger
     {
         public IDisposable? BeginScope<TState>(TState state)
             where TState : notnull => null;
@@ -852,6 +1012,7 @@ public sealed class CarrierContractTests
             Func<TState, Exception?, string> formatter)
         {
             messages.Add(formatter(state, exception));
+            levels.Add(logLevel);
         }
     }
 

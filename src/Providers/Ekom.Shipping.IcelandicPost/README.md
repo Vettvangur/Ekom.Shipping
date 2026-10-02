@@ -104,6 +104,14 @@ offices.
 
 ## Supported API operations
 
+Shipment creation truncates oversized recipient fields to Pósturinn's documented
+limits: name (44 characters), address lines and town (35), country code (2), and
+postcode (3 for domestic shipments, 10 for international shipments). Each truncated
+field produces a warning containing only the field name and lengths, never its
+value. Shipment references are also truncated to 30 characters with a warning;
+reference lookups must use the shortened value. The original request and customer
+data remain unchanged.
+
 Inject `IIcelandicPostShippingService` for direct API access:
 
 | Operation | Method |
