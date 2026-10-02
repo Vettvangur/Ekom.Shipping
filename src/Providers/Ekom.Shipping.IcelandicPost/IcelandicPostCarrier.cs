@@ -270,6 +270,7 @@ internal sealed class IcelandicPostCarrier : IIcelandicPostShippingService
         IcelandicPostShipmentRequest request,
         CancellationToken cancellationToken = default)
     {
+        request = NormalizeShipmentRequest(request);
         ValidateShipmentRequest(request);
         var account = GetAccount(accountReference);
         using var httpRequest = CreateRequest(account, HttpMethod.Post, "v1/shipments/create");
@@ -951,6 +952,52 @@ internal sealed class IcelandicPostCarrier : IIcelandicPostShippingService
         return uri.AbsoluteUri.EndsWith("/", StringComparison.Ordinal) ? uri : new Uri(uri.AbsoluteUri + '/');
     }
 
+    private IcelandicPostShipmentRequest NormalizeShipmentRequest(IcelandicPostShipmentRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.Recipient);
+        ArgumentNullException.ThrowIfNull(request.Options);
+        var recipient = request.Recipient;
+        var countryCode = TruncateShipmentField(recipient.CountryCode, "countryCode", 2)!;
+        var domestic = string.Equals(countryCode, "IS", StringComparison.OrdinalIgnoreCase);
+
+        return request with
+        {
+            Options = request.Options.Reference?.Length > 30
+                ? request.Options.WithReference(TruncateShipmentField(request.Options.Reference, "options.reference", 30))
+                : request.Options,
+            Recipient = recipient with
+            {
+                Name = TruncateShipmentField(recipient.Name, "name", 44)!,
+                AddressLine1 = TruncateShipmentField(recipient.AddressLine1, "addressLine1", 35)!,
+                AddressLine2 = TruncateShipmentField(recipient.AddressLine2, "addressLine2", 35),
+                Town = TruncateShipmentField(recipient.Town, "town", 35),
+                Postcode = TruncateShipmentField(recipient.Postcode, "postcode", domestic ? 3 : 10)!,
+                CountryCode = countryCode,
+            },
+        };
+    }
+
+    private string? TruncateShipmentField(string? value, string field, int maximumLength)
+    {
+        if (value is null || value.Length <= maximumLength)
+        {
+            return value;
+        }
+
+        _logger.LogWarning(
+            "Íslandspóstur shipment field {Field} exceeds the maximum length of {MaximumLength}; truncating from {OriginalLength} characters.",
+            field,
+            maximumLength,
+            value.Length);
+
+        // Do not split a UTF-16 surrogate pair at the truncation boundary.
+        var length = char.IsHighSurrogate(value[maximumLength - 1]) && char.IsLowSurrogate(value[maximumLength])
+            ? maximumLength - 1
+            : maximumLength;
+        return value[..length];
+    }
+
     private static void ValidateShipmentRequest(IcelandicPostShipmentRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -981,11 +1028,6 @@ internal sealed class IcelandicPostCarrier : IIcelandicPostShippingService
             {
                 throw new ArgumentException("International shipments require customs contents.", nameof(request));
             }
-        }
-
-        if (request.Options.Reference?.Length > 30)
-        {
-            throw new ArgumentException("Shipment references cannot exceed 30 characters.", nameof(request));
         }
     }
 
