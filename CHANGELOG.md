@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.0](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping-v0.1.5...Ekom.Shipping-v1.0.0) (2026-11-12)
+
+
+### Bug Fixes
+
+* **packaging:** use the Ekom logo as the NuGet package icon ([3ebea07](https://github.com/Vettvangur/Ekom.Shipping/commit/3ebea07ef68399c0f50cccb1d7b5c6b904da59ee))
+* **packaging:** use the Ekom logo as the NuGet package icon ([4d2f366](https://github.com/Vettvangur/Ekom.Shipping/commit/4d2f366dd04136ed270c32c427763bcb32ee80d1))
+
 ## [0.1.5](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping-v0.1.4...Ekom.Shipping-v0.1.5) (2026-11-12)
 
 
