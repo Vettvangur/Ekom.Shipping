@@ -63,6 +63,26 @@ public sealed class ShippingSelectionValidatorTests
     }
 
     [Fact]
+    public async Task ValidateAsync_UnavailableServiceMessageIncludesLookupContext()
+    {
+        var services = new ServiceCollection();
+        services.AddEkomShippingCore();
+        services.AddSingleton<IShippingCarrier>(new FakeCarrier());
+        await using var provider = services.BuildServiceProvider();
+        var validator = provider.GetRequiredService<IShippingSelectionValidator>();
+
+        var exception = await Assert.ThrowsAsync<InvalidShippingSelectionException>(() => validator.ValidateAsync(
+            new ShippingSelection("fake", "main", "home-delivery"),
+            new ShippingLookupRequest("store", "IS", "999")));
+
+        Assert.Equal(
+            "Service 'home-delivery' is not available from 'fake' " +
+            "(account 'main', store 'store', country 'IS', postal code '999'). " +
+            "Available services: pickup.",
+            exception.Message);
+    }
+
+    [Fact]
     public void Registry_RejectsDuplicateAliases()
     {
         var services = new ServiceCollection();

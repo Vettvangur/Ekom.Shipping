@@ -32,8 +32,14 @@ internal sealed class ShippingSelectionValidator : IShippingSelectionValidator
 
         if (service is null)
         {
+            var available = services.Count == 0
+                ? "none"
+                : string.Join(", ", services.Select(x => x.Id));
             throw new InvalidShippingSelectionException(
-                $"Service '{selection.ServiceId}' is not available from '{selection.CarrierAlias}'.");
+                $"Service '{selection.ServiceId}' is not available from '{selection.CarrierAlias}' " +
+                $"(account '{selection.AccountReference}', store '{request.StoreAlias}', " +
+                $"country '{request.CountryCode}', postal code '{request.PostalCode ?? "(none)"}'). " +
+                $"Available services: {available}.");
         }
 
         if (!service.RequiresPickupLocation)
