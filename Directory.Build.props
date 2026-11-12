@@ -12,6 +12,7 @@
     <RepositoryType>git</RepositoryType>
     <PackageTags>ekom;umbraco;ecommerce;shipping</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>Ekom_Logo.png</PackageIcon>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
     <IncludeSymbols>true</IncludeSymbols>
@@ -20,5 +21,6 @@
   </PropertyGroup>
   <ItemGroup Condition="'$(IsPackable)' != 'false'">
     <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="/"/>
+    <None Include="$(MSBuildThisFileDirectory)Ekom_Logo.png" Pack="true" PackagePath="/" Visible="false"/>
   </ItemGroup>
 </Project>
