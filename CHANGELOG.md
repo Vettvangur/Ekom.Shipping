@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.5](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping-v0.1.4...Ekom.Shipping-v0.1.5) (2026-11-12)
+
+
+### Bug Fixes
+
+* **shipping:** include lookup context in unavailable service error ([1b3e23d](https://github.com/Vettvangur/Ekom.Shipping/commit/1b3e23d48fb1542d50a3a89c63bec25e63e5e434))
+* **shipping:** include lookup context in unavailable service error ([d418421](https://github.com/Vettvangur/Ekom.Shipping/commit/d4184218e57cacd9317c8bbf8c9c35d047488c8d))
+
 ## [0.1.4](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping-v0.1.3...Ekom.Shipping-v0.1.4) (2026-09-23)
 
 
