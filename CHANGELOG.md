@@ -1,5 +1,7 @@
 # Changelog
 
+The `Ekom.Shipping`, `Ekom.Shipping.Core` and `Ekom.Shipping.U10`/`U17`/`U18` packages end with 1.0.0. The shipping framework is part of Ekom 1.3 and later; this repository now holds the carrier packages, each with its own changelog.
+
 ## [1.0.0](https://github.com/Vettvangur/Ekom.Shipping/compare/Ekom.Shipping-v0.1.5...Ekom.Shipping-v1.0.0) (2026-11-12)
 
 

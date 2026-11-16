@@ -19,6 +19,12 @@ public sealed class DhlExpressAccountOptions
     public string ProductName { get; init; } = "DHL Express";
     public ShippingFulfillmentMode FulfillmentMode { get; init; } = ShippingFulfillmentMode.Manual;
     public DhlExpressShipperOptions Shipper { get; init; } = new();
+
+    /// <summary>
+    /// Where a shipment of this account can be followed, with <c>{trackingNumber}</c> in place of the number.
+    /// When set, Ekom stores the link on the shipment and the manager shows it next to the tracking number.
+    /// </summary>
+    public string? TrackingUrlTemplate { get; init; }
 }
 
 public sealed class DhlExpressShipperOptions

@@ -3,7 +3,6 @@ name: publish-ekom-shipping
 on:
   push:
     tags:
-      - "Ekom.Shipping-v*"
       - "Ekom.Shipping.DhlExpress-v*"
       - "Ekom.Shipping.DhlLocationFinder-v*"
       - "Ekom.Shipping.Dropp-v*"
@@ -47,30 +46,13 @@ jobs:
           $ErrorActionPreference = "Stop"
 
           $tag = $env:RELEASE_TAG
-          if ($tag -notmatch '^(?<component>Ekom\.Shipping(?:\.DhlExpress|\.DhlLocationFinder|\.Dropp|\.IcelandicPost)?)-v(?<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z\.-]+)?)$') {
+          if ($tag -notmatch '^(?<component>Ekom\.Shipping\.(?:DhlExpress|DhlLocationFinder|Dropp|IcelandicPost))-v(?<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z\.-]+)?)$') {
             throw "Unsupported release tag '$tag'."
           }
 
           $component = $Matches['component']
           $version = $Matches['version']
           switch ($component) {
-            "Ekom.Shipping" {
-              $versionFile = "Directory.Build.props"
-              $projects = @(
-                "src/Ekom.Shipping.Core/Ekom.Shipping.Core.csproj"
-                "src/Ekom.Shipping/Ekom.Shipping.csproj"
-                "src/Umbraco/Ekom.Shipping.U10/Ekom.Shipping.U10.csproj"
-                "src/Umbraco/Ekom.Shipping.U17/Ekom.Shipping.U17.csproj"
-                "src/Umbraco/Ekom.Shipping.U18/Ekom.Shipping.U18.csproj"
-              )
-              $expectedIds = @(
-                "Ekom.Shipping.Core"
-                "Ekom.Shipping"
-                "Ekom.Shipping.U10"
-                "Ekom.Shipping.U17"
-                "Ekom.Shipping.U18"
-              )
-            }
             "Ekom.Shipping.DhlExpress" {
               $versionFile = "src/Providers/Ekom.Shipping.DhlExpress/Ekom.Shipping.DhlExpress.csproj"
               $projects = @($versionFile)

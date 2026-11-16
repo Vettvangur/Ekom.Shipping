@@ -16,7 +16,8 @@
           "path": "Ekom.Shipping.Dropp.csproj",
           "xpath": "/Project/PropertyGroup/Version"
         }
-      ]
+      ],
+      "release-as": "1.0.0"
     }
   }
 }

@@ -3,11 +3,17 @@
     <TargetFramework>net8.0</TargetFramework>
     <PackageId>Ekom.Shipping.Dropp</PackageId>
     <Version>0.1.2</Version>
-    <Description>Dropp checkout and fulfillment provider for Ekom Shipping.</Description>
+    <Description>Dropp checkout and fulfillment provider for Ekom.</Description>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App"/>
-    <ProjectReference Include="../../Ekom.Shipping.Core/Ekom.Shipping.Core.csproj"/>
+  </ItemGroup>
+  <!-- Ekom owns the carrier contracts and the order shipment records. -->
+  <ItemGroup Condition="'$(UseProjectReferences)' == 'true'">
+    <ProjectReference Include="$(EkomRoot)Ekom\Ekom.Core\Ekom\Ekom.csproj"/>
+  </ItemGroup>
+  <ItemGroup Condition="'$(UseProjectReferences)' != 'true'">
+    <PackageReference Include="Ekom.Core" Version="$(EkomVersion)"/>
   </ItemGroup>
   <ItemGroup>
     <None Remove="$(MSBuildThisFileDirectory)../../../README.md"/>

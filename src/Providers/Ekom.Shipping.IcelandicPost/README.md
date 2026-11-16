@@ -91,7 +91,7 @@ defaults to three hours.
 
 ## Public pickup locations
 
-With an `Ekom.Shipping.U*` adapter installed, checkout UIs can load the
+Checkout UIs can load the
 configured provider's cached locations without a custom controller:
 
 ```http
@@ -179,9 +179,9 @@ Created shipments use the shared order-manager actions:
 - **View shipment JSON**
 - **Delete shipment**
 
-These actions go through `IShippingFulfillmentService`, keeping state in the
-order's `ShippingProvider.CustomData`. Confirmed deletion is retained and is not
-automatically recreated.
+These actions go through `IShippingFulfillmentService`, which records every step
+on the order's shipment. A deleted shipment stays in the shipment history, and a
+new one can be created from the order manager.
 
 ## Mutation safety
 

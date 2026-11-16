@@ -168,7 +168,11 @@ internal sealed class DhlExpressCarrier :
                 response.ShipmentTrackingNumber,
                 request.MerchantOrderId,
                 response.ShipmentTrackingNumber,
-                documents);
+                documents)
+            {
+                TrackingUrl = ShippingTrackingLink.Format(account.TrackingUrlTemplate, response.ShipmentTrackingNumber),
+                ServiceName = account.ProductName,
+            };
         }
         catch (Exception exception) when (exception is not ShipmentOutcomeUnknownException)
         {

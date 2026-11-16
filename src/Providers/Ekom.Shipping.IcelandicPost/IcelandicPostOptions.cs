@@ -19,4 +19,10 @@ public sealed class IcelandicPostAccountOptions
     public string ApiKey { get; init; } = string.Empty;
 
     public TimeSpan CacheDuration { get; init; } = TimeSpan.FromHours(3);
+
+    /// <summary>
+    /// Where a shipment of this account can be followed, with <c>{trackingNumber}</c> in place of the number.
+    /// When set, Ekom stores the link on the shipment and the manager shows it next to the tracking number.
+    /// </summary>
+    public string? TrackingUrlTemplate { get; init; }
 }

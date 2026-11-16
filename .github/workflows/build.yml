@@ -42,30 +42,20 @@ jobs:
           New-Item -ItemType Directory -Force -Path "artifacts" | Out-Null
 
           $projects = @(
-            "src/Ekom.Shipping.Core/Ekom.Shipping.Core.csproj"
-            "src/Ekom.Shipping/Ekom.Shipping.csproj"
             "src/Providers/Ekom.Shipping.DhlExpress/Ekom.Shipping.DhlExpress.csproj"
             "src/Providers/Ekom.Shipping.DhlLocationFinder/Ekom.Shipping.DhlLocationFinder.csproj"
             "src/Providers/Ekom.Shipping.Dropp/Ekom.Shipping.Dropp.csproj"
             "src/Providers/Ekom.Shipping.IcelandicPost/Ekom.Shipping.IcelandicPost.csproj"
-            "src/Umbraco/Ekom.Shipping.U10/Ekom.Shipping.U10.csproj"
-            "src/Umbraco/Ekom.Shipping.U17/Ekom.Shipping.U17.csproj"
-            "src/Umbraco/Ekom.Shipping.U18/Ekom.Shipping.U18.csproj"
           )
           foreach ($project in $projects) {
             dotnet pack $project -c Release --no-build --no-restore -o "artifacts"
           }
 
           $expectedIds = @(
-            "Ekom.Shipping.Core"
-            "Ekom.Shipping"
             "Ekom.Shipping.DhlExpress"
             "Ekom.Shipping.DhlLocationFinder"
             "Ekom.Shipping.Dropp"
             "Ekom.Shipping.IcelandicPost"
-            "Ekom.Shipping.U10"
-            "Ekom.Shipping.U17"
-            "Ekom.Shipping.U18"
           )
           foreach ($id in $expectedIds) {
             if (-not (Get-ChildItem "artifacts/$id.*.nupkg" -File -ErrorAction SilentlyContinue)) {
@@ -77,7 +67,7 @@ jobs:
           }
 
           $packages = Get-ChildItem "artifacts/*.nupkg" -File
-          if ($packages.Count -ne 9) { throw "Expected 9 NuGet packages, found $($packages.Count)." }
+          if ($packages.Count -ne $expectedIds.Count) { throw "Expected $($expectedIds.Count) NuGet packages, found $($packages.Count)." }
           $packages | Format-Table Name,Length
 
       - name: Upload package artifacts

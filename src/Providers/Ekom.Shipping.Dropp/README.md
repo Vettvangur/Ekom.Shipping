@@ -6,19 +6,13 @@ extra packages, returns, and tracking.
 
 ## Installation
 
-For Dropp with Ekom on Umbraco 17:
-
 ```bash
 dotnet add package Ekom.Shipping.Dropp
-dotnet add package Ekom.Shipping.U17
 ```
 
-Use `Ekom.Shipping.U10` for Umbraco 13 or `Ekom.Shipping.U18` for Umbraco 18.
-You do not need to install `Ekom.Shipping` or `Ekom.Shipping.Core` separately.
-Then register Dropp with `services.AddDroppShipping(configuration)`.
-
-For standalone Dropp API access without Ekom integration, install only
-`Ekom.Shipping.Dropp`.
+The package requires Ekom 1.3 or later, which contains the shipping framework,
+and works with every Umbraco version Ekom supports. Register Dropp with
+`services.AddDroppShipping(configuration)`.
 
 ## Official Dropp API documentation
 
@@ -68,7 +62,7 @@ shipment during `CheckoutEvents.CompleteCheckoutAsync`.
 
 ## Public pickup locations
 
-With an `Ekom.Shipping.U*` adapter installed, checkout UIs can load the
+Checkout UIs can load the
 configured provider's cached Dropp locations without a custom controller:
 
 ```http
@@ -131,8 +125,8 @@ shipments expose these order-manager actions:
 - **Delete shipment**
 
 Deletion first checks the current Dropp status. Dropp only allows deletion
-before collection while the order is `initial`. A confirmed deletion is retained
-as a tombstone on the Ekom order and is not automatically recreated.
+before collection while the order is `initial`. A deleted shipment stays in the
+order's shipment history, and a new one can be created from the order manager.
 
 Direct calls to update or delete a Dropp order bypass Ekom state management.
 Use them only when the application also owns the corresponding synchronization.
@@ -142,8 +136,7 @@ Use them only when the application also owns the corresponding synchronization.
 Dropp does not document POST, PATCH, DELETE, extra-package, or extra-order
 operations as idempotent. Network failures and ambiguous server responses throw
 `ShipmentOutcomeUnknownException`; do not blindly retry them. The built-in Ekom
-orchestration records uncertain creation and deletion outcomes in the order's
-`ShippingProvider.CustomData`.
+orchestration records uncertain creation and deletion outcomes on the shipment.
 
 The built-in per-order lock is process-local. Multi-node sites must provide a
 distributed order lock before enabling automatic fulfillment.

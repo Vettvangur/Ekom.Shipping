@@ -7,3 +7,4 @@ obj/
 .DS_Store
 TestResults/
 artifacts/
+Directory.Build.local.props
