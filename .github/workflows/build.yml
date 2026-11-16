@@ -67,7 +67,7 @@ jobs:
           }
 
           $packages = Get-ChildItem "artifacts/*.nupkg" -File
-          if ($packages.Count -ne 9) { throw "Expected 9 NuGet packages, found $($packages.Count)." }
+          if ($packages.Count -ne $expectedIds.Count) { throw "Expected $($expectedIds.Count) NuGet packages, found $($packages.Count)." }
           $packages | Format-Table Name,Length
 
       - name: Upload package artifacts
