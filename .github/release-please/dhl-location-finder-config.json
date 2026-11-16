@@ -16,8 +16,7 @@
           "path": "Ekom.Shipping.DhlLocationFinder.csproj",
           "xpath": "/Project/PropertyGroup/Version"
         }
-      ],
-      "release-as": "1.0.0"
+      ]
     }
   }
 }
