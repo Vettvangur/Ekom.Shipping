@@ -1,6 +1,6 @@
 {
-  "src/Providers/Ekom.Shipping.DhlExpress": "0.1.1",
-  "src/Providers/Ekom.Shipping.DhlLocationFinder": "0.1.1",
-  "src/Providers/Ekom.Shipping.Dropp": "0.1.2",
-  "src/Providers/Ekom.Shipping.IcelandicPost": "0.1.8"
+  "src/Providers/Ekom.Shipping.DhlExpress": "1.0.0",
+  "src/Providers/Ekom.Shipping.DhlLocationFinder": "1.0.0",
+  "src/Providers/Ekom.Shipping.Dropp": "1.0.0",
+  "src/Providers/Ekom.Shipping.IcelandicPost": "1.0.0"
 }
