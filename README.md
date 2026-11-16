@@ -1,39 +1,37 @@
 # Ekom.Shipping
 
-Reusable checkout and fulfillment providers for Ekom. Checkout selection,
-automatic carrier booking, manual booking, and label printing use the same
-provider services. Shipment state is stored on the order's shipping-provider
-`CustomData`; the package creates no shipping table.
+Shipping carriers for Ekom. Each package connects one carrier to Ekom's shipping
+framework: services and pickup points at checkout, automatic or manual booking,
+labels, and shipment management from the order manager.
+
+The framework itself is part of Ekom 1.3 and later: the carrier contracts,
+checkout selection, shipment booking, and the record of every shipment and what
+happened to it. See Ekom's `docs/guides/shipping.md`.
 
 ## Packages
 
-- `Ekom.Shipping.Core` — provider-neutral contracts and validation.
-- `Ekom.Shipping` — Ekom shipping-method and order-data integration.
 - [`Ekom.Shipping.DhlExpress`](src/Providers/Ekom.Shipping.DhlExpress/README.md) — MyDHL rates, international fulfillment, creation-time labels, tracking, documents, and pickups.
 - [`Ekom.Shipping.DhlLocationFinder`](src/Providers/Ekom.Shipping.DhlLocationFinder/README.md) — transient DHL Unified location searches.
 - [`Ekom.Shipping.Dropp`](src/Providers/Ekom.Shipping.Dropp/README.md) — Dropp locations, booking, order management, labels, returns, extra packages, and tracking.
 - [`Ekom.Shipping.IcelandicPost`](src/Providers/Ekom.Shipping.IcelandicPost/README.md) — Pósturinn services, pickup locations, booking, labels, tracking, and shipment management.
-- `Ekom.Shipping.U10` — Umbraco 13 integration.
-- `Ekom.Shipping.U17` — Umbraco 17 integration.
-- `Ekom.Shipping.U18` — Umbraco 18 integration.
 
 ## Installation
 
-For Ekom integration, install each carrier package you use and the shipping
-adapter matching your Umbraco version:
+Install the package of each carrier the site uses. They require Ekom 1.3 or
+later and work with every Umbraco version Ekom supports; there is no separate
+package per Umbraco version.
 
-| Umbraco version | Shipping adapter |
-|---|---|
-| 13 | `Ekom.Shipping.U10` |
-| 17 | `Ekom.Shipping.U17` |
-| 18 | `Ekom.Shipping.U18` |
+### Upgrading from 0.x
 
-NuGet installs `Ekom.Shipping` and `Ekom.Shipping.Core` transitively, so you do
-not need to install them separately. Despite its name, `Ekom.Shipping.U10`
-currently targets Umbraco 13.
+Before 1.0 the framework was its own packages. Remove `Ekom.Shipping`,
+`Ekom.Shipping.Core` and `Ekom.Shipping.U10`/`U17`/`U18`, update Ekom to 1.3 or
+later and the carrier packages to 1.0, and remove the `AddEkomShipping()` call.
+Types from the `Ekom.Shipping.Ekom` namespace are in `Ekom.Shipping`, and
+`ShippingFulfillmentState` is `Ekom.Models.Shipments.ShipmentState`.
 
-For standalone carrier API access without Ekom integration, install only the
-carrier package.
+Shipments are no longer kept on the order's shipping custom data. Ekom copies
+the shipment of an existing order to its shipment records the first time the
+order is opened in the manager or its shipment is read.
 
 ## Configuration
 
@@ -103,7 +101,6 @@ store only a provider alias, account reference, and service ID.
 Register only the carrier packages used by the site:
 
 ```csharp
-services.AddEkomShipping();
 services.AddDhlExpressShipping(configuration);
 services.AddDhlLocationFinder(configuration);
 services.AddDroppShipping(configuration);
@@ -113,8 +110,8 @@ services.AddIcelandicPostShipping(configuration);
 DHL Express Ekom fulfillment additionally requires one
 `IDhlExpressShipmentEnricher` and one private `IShippingDocumentStore`.
 The enricher supplies measured parcels, planned origin time, and international
-customs data. The document store durably saves creation-time labels while only
-opaque references are retained in `ShippingProvider.CustomData`.
+customs data. The document store durably saves creation-time labels; Ekom's
+shipment record keeps only opaque references to them.
 The store must treat repeated writes to the supplied deterministic references as
 idempotent and define private access control, retention, and order-cleanup rules.
 
@@ -132,16 +129,26 @@ manage their values in the Umbraco backoffice:
 Legacy shipping providers with all three properties empty continue to work as
 normal Ekom shipping providers. Partially configured providers fail validation.
 
-When an account's `FulfillmentMode` is `Automatic`, the Umbraco adapter creates
-the shipment from `CheckoutEvents.CompleteCheckoutAsync`. Accounts default to
+When an account's `FulfillmentMode` is `Automatic`, Ekom creates
+the shipment when checkout completes. Accounts default to
 `Manual` when the setting is omitted. Automatic fulfillment does not depend on
 the order becoming `ReadyForDispatch`, so offline-payment and customized order
-status flows are supported. Carrier failures are logged and saved on the order;
-they do not fail checkout completion.
+status flows are supported. Carrier failures are logged and recorded on the
+shipment; they do not fail checkout completion.
 
-The Umbraco packages register the shared checkout and fulfillment services. An
-automatic document-type migration and a provider-aware backoffice selector are
-planned before the first stable release.
+### Tracking links
+
+Set `TrackingUrlTemplate` on a carrier account to the carrier's public tracking
+address, with `{trackingNumber}` in place of the number:
+
+```json
+"dropp-main": {
+  "TrackingUrlTemplate": "https://tracking.example/?number={trackingNumber}"
+}
+```
+
+Ekom stores the link on the shipment, and the order manager shows it next to
+the tracking number.
 
 ## Checkout usage
 
@@ -157,7 +164,7 @@ cart ownership checks.
 
 ### Public pickup locations
 
-The Umbraco adapters expose a public read-only endpoint for checkout UIs:
+Ekom exposes a public read-only endpoint for checkout UIs:
 
 ```http
 GET /ekom/shipping/providers/{providerKey}/pickup-locations?storeAlias=main&countryCode=IS&postalCode=101
@@ -176,22 +183,8 @@ their normal ASP.NET Core or edge rate-limiting policy.
 
 ## Fulfillment
 
-`IShippingFulfillmentService` is the recommended Ekom-level API:
-
-```csharp
-await fulfillment.CreateAsync(orderId, cancellationToken);
-await fulfillment.RetryAsync(orderId, cancellationToken);
-var label = await fulfillment.GetLabelAsync(orderId, cancellationToken);
-```
-
-`CreateAsync` works regardless of the configured automatic/manual mode.
-Automatic checkout processing calls the same implementation. Sites can add
-`IShippingAutomationRule` implementations to veto automatic creation, and can
-replace `IShippingOrderMapper` when their order-to-carrier mapping differs.
-
-For provider-specific manual usage, inject `IDroppShippingService`. It exposes
-location lookup, barcode reservation, booking, PDF labels, and tracking without
-requiring the Ekom fulfillment orchestration service.
+`IShippingFulfillmentService`, in Ekom, books, retries, prints and deletes the
+carrier shipment of an order.
 
 The Ekom order manager receives context-sensitive actions automatically:
 
@@ -200,33 +193,15 @@ The Ekom order manager receives context-sensitive actions automatically:
 - **Print shipping label** after successful creation.
 - **View shipment JSON** to fetch current carrier details.
 - **Delete shipment** when the carrier supports deletion and the shipment has not progressed too far.
+- **Create new shipment** after a shipment was deleted.
 - A disabled warning when the outcome is unknown.
 
 Printing never creates a shipment implicitly.
 
-Confirmed deletions remain recorded on the order and are not automatically
-recreated. An uncertain deletion is not blindly retried.
+A deleted shipment stays in the order's shipment history. An uncertain deletion
+is not blindly retried.
 
-### Order custom data
-
-The orchestration service stores these values under `ShippingProvider.CustomData`:
-
-- `customshippingShipmentState`
-- `customshippingShipmentAttempts`
-- `customshippingShipmentReference`
-- `customshippingShipmentId`
-- `customshippingTrackingNumber`
-- `customshippingShipmentDocuments`
-- `customshippingShipmentLastError`
-- `customshippingShipmentUpdatedUtc`
-- `customshippingCarrierAlias`
-- `customshippingAccountReference`
-- `customshippingServiceId`
-
-Existing Dropp values (`customshippingDroppBarcode` and
-`customshippingDroppOrderId`) are recognized for label compatibility.
-
-State is written before carrier submission. A connection failure after
+Each step is recorded before the carrier is called. A connection failure after
 submission becomes `OutcomeUnknown` and is not blindly retried, because Dropp's
 idempotency behavior has not been confirmed. Per-order semaphores prevent
 duplicate submissions within one application process. Multi-node sites should
@@ -235,15 +210,14 @@ add a distributed order lock before enabling automatic creation.
 ## Releases and NuGet publishing
 
 GitHub Actions builds, tests, and packs all projects on pull requests and pushes
-to `main`. Release Please maintains five independently versioned components:
+to `main`. Release Please maintains four independently versioned components:
 
 | Component | Packages | Tag format |
 |---|---|---|
-| Ekom Shipping framework | Core, Ekom integration, U10, U17, and U18 | `Ekom.Shipping-v0.1.0` |
-| DHL Express | DHL Express provider | `Ekom.Shipping.DhlExpress-v0.1.0` |
-| DHL Location Finder | Location Finder client | `Ekom.Shipping.DhlLocationFinder-v0.1.0` |
-| Dropp | Dropp provider | `Ekom.Shipping.Dropp-v0.1.0` |
-| Icelandic Post | Icelandic Post provider | `Ekom.Shipping.IcelandicPost-v0.1.0` |
+| DHL Express | DHL Express provider | `Ekom.Shipping.DhlExpress-v1.0.0` |
+| DHL Location Finder | Location Finder client | `Ekom.Shipping.DhlLocationFinder-v1.0.0` |
+| Dropp | Dropp provider | `Ekom.Shipping.Dropp-v1.0.0` |
+| Icelandic Post | Icelandic Post provider | `Ekom.Shipping.IcelandicPost-v1.0.0` |
 
 Conventional commits under a component's path update only that component's
 release PR and changelog. Each release group has an isolated Release Please

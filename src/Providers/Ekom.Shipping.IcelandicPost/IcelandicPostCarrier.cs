@@ -245,7 +245,10 @@ internal sealed class IcelandicPostCarrier : IIcelandicPostShippingService
                     DeliveryServiceId = request.ServiceId,
                 }),
             cancellationToken).ConfigureAwait(false);
-        return new ShipmentBookingResult(shipment.ShipmentId, request.MerchantOrderId, shipment.ShipmentId);
+        return new ShipmentBookingResult(shipment.ShipmentId, request.MerchantOrderId, shipment.ShipmentId)
+        {
+            TrackingUrl = ShippingTrackingLink.Format(GetAccount(accountReference).TrackingUrlTemplate, shipment.ShipmentId),
+        };
     }
 
     private static string NormalizeMobilePhone(string phone)

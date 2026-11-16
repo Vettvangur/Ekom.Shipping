@@ -237,7 +237,10 @@ internal sealed class DroppCarrier : IDroppShippingService
         var barcode = string.IsNullOrWhiteSpace(created.Barcode)
             ? request.BookingReference
             : created.Barcode;
-        return new ShipmentBookingResult(created.Id.ToString(), barcode, barcode);
+        return new ShipmentBookingResult(created.Id.ToString(), barcode, barcode)
+        {
+            TrackingUrl = ShippingTrackingLink.Format(GetAccount(accountReference).TrackingUrlTemplate, barcode),
+        };
     }
 
     public async Task<DroppOrder> GetOrderAsync(

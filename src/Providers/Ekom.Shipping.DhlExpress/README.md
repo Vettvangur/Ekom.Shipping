@@ -81,8 +81,8 @@ or gross weight per line.
 DHL transport labels are returned during creation and are not generally
 downloadable later. Register exactly one private `IShippingDocumentStore` when
 using Ekom fulfillment. The fulfillment service stores labels and document
-metadata before marking the shipment Created; only opaque references are kept
-in `ShippingProvider.CustomData`.
+metadata before marking the shipment Created; Ekom's shipment record keeps
+only opaque references to them.
 
 `StoreAsync` receives deterministic references and must be idempotent and
 all-or-nothing for each request. The implementation is responsible for private
